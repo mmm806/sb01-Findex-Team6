@@ -97,60 +97,36 @@ src
  ┣ main
  ┃ ┣ java
  ┃ ┃ ┣ com
- ┃ ┃ ┃ ┣ example
- ┃ ┃ ┃ ┃ ┣ controller
- ┃ ┃ ┃ ┃ ┃ ┣ AuthController.java
- ┃ ┃ ┃ ┃ ┃ ┣ UserController.java
- ┃ ┃ ┃ ┃ ┃ ┗ AdminController.java
- ┃ ┃ ┃ ┃ ┣ model
- ┃ ┃ ┃ ┃ ┃ ┣ User.java
- ┃ ┃ ┃ ┃ ┃ ┗ Course.java
- ┃ ┃ ┃ ┃ ┣ repository
- ┃ ┃ ┃ ┃ ┃ ┣ UserRepository.java
- ┃ ┃ ┃ ┃ ┃ ┗ CourseRepository.java
- ┃ ┃ ┃ ┃ ┣ service
- ┃ ┃ ┃ ┃ ┃ ┣ AuthService.java
- ┃ ┃ ┃ ┃ ┃ ┣ UserService.java
- ┃ ┃ ┃ ┃ ┃ ┗ AdminService.java
- ┃ ┃ ┃ ┃ ┣ security
- ┃ ┃ ┃ ┃ ┃ ┣ SecurityConfig.java
- ┃ ┃ ┃ ┃ ┃ ┗ JwtAuthenticationEntryPoint.java
- ┃ ┃ ┃ ┃ ┣ dto
- ┃ ┃ ┃ ┃ ┃ ┣ LoginRequest.java
- ┃ ┃ ┃ ┃ ┃ ┗ UserResponse.java
- ┃ ┃ ┃ ┃ ┣ exception
- ┃ ┃ ┃ ┃ ┃ ┣ GlobalExceptionHandler.java
- ┃ ┃ ┃ ┃ ┃ ┗ ResourceNotFoundException.java
- ┃ ┃ ┃ ┃ ┣ utils
- ┃ ┃ ┃ ┃ ┃ ┣ JwtUtils.java
- ┃ ┃ ┃ ┃ ┃ ┗ UserMapper.java
- ┃ ┃ ┃ ┣ resources
- ┃ ┃ ┃ ┃ ┣ application.properties
- ┃ ┃ ┃ ┃ ┗ static
- ┃ ┃ ┃ ┃ ┃ ┣ css
- ┃ ┃ ┃ ┃ ┃ ┃ ┗ style.css
- ┃ ┃ ┃ ┃ ┃ ┣ js
- ┃ ┃ ┃ ┃ ┃ ┃ ┗ script.js
- ┃ ┃ ┃ ┣ webapp
- ┃ ┃ ┃ ┃ ┣ WEB-INF
- ┃ ┃ ┃ ┃ ┃ ┗ web.xml
- ┃ ┃ ┃ ┣ test
- ┃ ┃ ┃ ┃ ┣ java
- ┃ ┃ ┃ ┃ ┃ ┣ com
- ┃ ┃ ┃ ┃ ┃ ┃ ┣ example
- ┃ ┃ ┃ ┃ ┃ ┃ ┃ ┣ AuthServiceTest.java
- ┃ ┃ ┃ ┃ ┃ ┃ ┃ ┗ UserControllerTest.java
- ┃ ┃ ┃ ┃ ┃ ┃ ┗ ApplicationTests.java
- ┃ ┃ ┃ ┣ resources
- ┃ ┃ ┃ ┃ ┣ application.properties
- ┃ ┃ ┃ ┃ ┗ static
- ┃ ┃ ┃ ┃ ┃ ┣ css
- ┃ ┃ ┃ ┃ ┃ ┃ ┗ style.css
- ┃ ┃ ┃ ┃ ┃ ┣ js
- ┃ ┃ ┃ ┃ ┃ ┃ ┗ script.js
- ┣ pom.xml
- ┣ Application.java
- ┣ application.properties
+ ┃ ┃ ┃ ┣ sprint
+ ┃ ┃ ┃ ┃ ┣ findex_team6
+ ┃ ┃ ┃ ┃ ┃ ┣ controller
+ ┃ ┃ ┃ ┃ ┃ ┣ dto
+ ┃ ┃ ┃ ┃ ┃ ┃ ┗ IndexInfoDto.java
+ ┃ ┃ ┃ ┃ ┃ ┣ entity
+ ┃ ┃ ┃ ┃ ┃ ┃ ┣ AutoIntegergration.java
+ ┃ ┃ ┃ ┃ ┃ ┃ ┣ ContentType.java
+ ┃ ┃ ┃ ┃ ┃ ┃ ┣ DashBoard.java
+ ┃ ┃ ┃ ┃ ┃ ┃ ┣ Index.java
+ ┃ ┃ ┃ ┃ ┃ ┃ ┣ IndexDataLink.java
+ ┃ ┃ ┃ ┃ ┃ ┃ ┣ IndexVal.java
+ ┃ ┃ ┃ ┃ ┃ ┃ ┣ SourceType.java
+ ┃ ┃ ┃ ┃ ┃ ┣ mapper
+ ┃ ┃ ┃ ┃ ┃ ┃ ┣ IdexMapper.java
+ ┃ ┃ ┃ ┃ ┃ ┣ repository
+ ┃ ┃ ┃ ┃ ┃ ┣ service
+ ┃ ┣ resources
+ ┃ ┃ ┣ application.yml
+ ┃ ┃ ┗ static
+ ┃ ┃ ┃ ┣ css
+ ┃ ┃ ┃ ┃ ┗ style.css
+ ┃ ┃ ┃ ┣ js
+ ┃ ┃ ┃ ┃ ┗ script.js
+ ┣ test
+ ┃ ┣ java
+ ┃ ┃ ┣ com
+ ┃ ┃ ┃ ┣ sprint
+ ┃ ┃ ┃ ┃ ┣ findex_team6
+ ┃ ┃ ┃ ┃ ┃ ┗ FindexTeam6ApplicationTests.java
  ┣ .gitignore
  ┗ README.md
 ```
