@@ -4,11 +4,10 @@
 
 ## 팀원 구성
 
-|             김응진             |                            이민주                            |                            이원길                            |                            이주녕                            |                            허원재                            |
-| :----------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
-|                                | <img width="160px" src="C:\Users\leeco\Desktop\blog\realitsyourman.github.io\assets\img\a7781d01-fea9-4454-97e7-c7c51415f283.png"/> | <img width="160px" src="C:\Users\leeco\Desktop\blog\realitsyourman.github.io\assets\img\5266f84b-8020-427a-8daf-bc2a63456ff6.png"/> | <img width="160px" src="C:\Users\leeco\Desktop\blog\realitsyourman.github.io\assets\img\139120379.png"/> | <img width="160px" src="C:\Users\leeco\Desktop\blog\realitsyourman.github.io\assets\img\39307905.png"/> |
-| [@김웅진](https://github.com/) |              [@m0276](https://github.com/m0276)              |     [@realitsyourman](https://github.com/realitsyourman)     |         [@JunyungLee](https://github.com/JunyungLee)         |              [@Oince](https://github.com/Oince)              |
-
+|                  김응진                  |                     이민주                     |                      이원길                      |                      이주녕                      |                     허원재                     |
+| :--------------------------------------: | :--------------------------------------------: | :----------------------------------------------: | :----------------------------------------------: | :--------------------------------------------: |
+|                                          |<img width="160px" src="https://github.com/user-attachments/assets/a7781d01-fea9-4454-97e7-c7c51415f283"/>|<img width="160px" src="https://github.com/user-attachments/assets/5266f84b-8020-427a-8daf-bc2a63456ff6"/>|<img width="160px" src="https://avatars.githubusercontent.com/u/139120379?v=4"/>|<img width="160px" src="https://avatars.githubusercontent.com/u/39307905?v=4"/>|
+| [@김웅진](https://github.com/) | [@m0276](https://github.com/m0276) | [@realitsyourman](https://github.com/realitsyourman) | [@JunyungLee](https://github.com/JunyungLee) | [@Oince](https://github.com/Oince) |
 ---
 
 ## 프로젝트 소개
