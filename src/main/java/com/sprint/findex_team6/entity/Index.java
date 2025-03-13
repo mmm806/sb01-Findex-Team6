@@ -22,7 +22,7 @@ public class Index {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  private String indexClassfication;  // 지수 분류명
+  private String indexClassification;  // 지수 분류명
   private String indexName;     // 지수명
   private Integer employedItemsCount; // 채용 종목 수
   private LocalDate baseDate;    // 기준 시점
