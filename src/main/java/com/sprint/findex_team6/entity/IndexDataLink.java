@@ -35,6 +35,6 @@ public class IndexDataLink {
 
   //지수 정보
   @ManyToOne //하나의 지수 정보는 여러번 연동 작업을 함
-  @JoinColumn(name = "index_val_id")
+  @JoinColumn(name = "index_id")
   private Index index; //연동된 지수 정보 
 }
