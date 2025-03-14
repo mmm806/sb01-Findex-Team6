@@ -50,15 +50,33 @@ public class IndexValService {
   public IndexDataDto update(Long id, IndexDataUpdateRequest request) {
     IndexVal indexVal = indexValRepository.findById(id)
         .orElseThrow(() -> new NotFoundException("IndexVal not found. id=" + id));
-    indexVal.setMarketPrice(request.marketPrice());
-    indexVal.setClosePrice(request.closingPrice());
-    indexVal.setHighPrice(request.highPrice());
-    indexVal.setLowPrice(request.lowPrice());
-    indexVal.setVersus(request.versus());
-    indexVal.setFluctuationRate(request.fluctuationRate());
-    indexVal.setTradingQuantity(request.tradingQuantity());
-    indexVal.setTradingPrice(BigDecimal.valueOf(request.tradingPrice()));
-    indexVal.setMarketTotalCount(BigDecimal.valueOf(request.marketTotalAmount()));
+    if (request.marketPrice() != null) {
+      indexVal.setMarketPrice(request.marketPrice());
+    }
+    if (request.closingPrice() != null) {
+      indexVal.setClosePrice(request.closingPrice());
+    }
+    if (request.highPrice() != null) {
+      indexVal.setHighPrice(request.highPrice());
+    }
+    if (request.lowPrice() != null) {
+      indexVal.setLowPrice(request.lowPrice());
+    }
+    if (request.versus() != null) {
+      indexVal.setVersus(request.versus());
+    }
+    if (request.fluctuationRate() != null) {
+      indexVal.setFluctuationRate(request.fluctuationRate());
+    }
+    if (request.tradingQuantity() != null) {
+      indexVal.setTradingQuantity(request.tradingQuantity());
+    }
+    if (request.tradingPrice() != null) {
+      indexVal.setTradingPrice(BigDecimal.valueOf(request.tradingPrice()));
+    }
+    if (request.marketTotalAmount() != null) {
+      indexVal.setMarketTotalCount(BigDecimal.valueOf(request.marketTotalAmount()));
+    }
     return indexValMapper.toDto(indexVal);
   }
 
@@ -67,6 +85,4 @@ public class IndexValService {
   public void delete(Long id) {
     indexValRepository.deleteById(id);
   }
-
-
 }
