@@ -1,14 +1,8 @@
-package com.sprint.findex_team6.dto;
+package com.sprint.findex_team6.dto.request;
 
-import com.sprint.findex_team6.entity.SourceType;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
-public record IndexDataDto(
-    Long id,
-    Long indexInfoId,
-    LocalDate baseDate,
-    SourceType sourceType,
+public record IndexDataUpdateRequest(
     BigDecimal marketPrice,
     BigDecimal closingPrice,
     BigDecimal highPrice,
@@ -18,7 +12,6 @@ public record IndexDataDto(
     Long tradingQuantity,
     Long tradingPrice,
     Long marketTotalAmount
-
 ) {
 
 }
