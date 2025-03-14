@@ -13,11 +13,12 @@ import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @Table(name = "index")
 public class Index {
 
@@ -46,4 +47,14 @@ public class Index {
 
   @Column
   private Boolean favorite;   // 즐겨찾기
+
+  public Index(String indexClassification, String indexName, Integer employedItemsCount, LocalDate baseDate, BigDecimal baseIndex, SourceType sourceType, Boolean favorite){
+    this.indexClassification = indexClassification;
+    this.indexName = indexName;
+    this.employedItemsCount = employedItemsCount;
+    this.baseDate = baseDate;
+    this.baseIndex = baseIndex;
+    this.sourceType = sourceType;
+    this.favorite = favorite;
+  }
 }
