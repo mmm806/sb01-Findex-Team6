@@ -11,7 +11,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,7 +21,7 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Table(name = "index_val")
 public class IndexVal {
@@ -64,5 +66,34 @@ public class IndexVal {
 
   @ManyToOne //하나의 지수정보에 대해 여러개의 지수 데이터
   private Index index;
+
+  @Builder
+  public IndexVal(
+      LocalDate baseDate,
+      SourceType sourceType,
+      BigDecimal marketPrice,
+      BigDecimal closePrice,
+      BigDecimal highPrice,
+      BigDecimal lowPrice,
+      BigDecimal versus,
+      BigDecimal fluctuationRate,
+      Long tradingQuantity,
+      BigDecimal tradingPrice,
+      BigDecimal marketTotalCount,
+      Index index
+  ) {
+    this.date = baseDate;
+    this.sourceType = sourceType;
+    this.marketPrice = marketPrice;
+    this.closePrice = closePrice;
+    this.highPrice = highPrice;
+    this.lowPrice = lowPrice;
+    this.versus = versus;
+    this.fluctuationRate = fluctuationRate;
+    this.tradingQuantity = tradingQuantity;
+    this.tradingPrice = tradingPrice;
+    this.marketTotalCount = marketTotalCount;
+    this.index = index;
+  }
 
 }
