@@ -1,17 +1,18 @@
 package com.sprint.findex_team6.dto;
 
 
-import com.sprint.findex_team6.entity.ConnectType;
+import com.sprint.findex_team6.entity.ContentType;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record SyncJobDto(
     Long id,
-    ConnectType jobType,
+    ContentType jobType,
     Long indexInfoId,
-    LocalDateTime targetDate,
+    LocalDate targetDate,
     String worker,
     LocalDateTime jobTime,
-    boolean result
+    String result
 ) {
 
 }
