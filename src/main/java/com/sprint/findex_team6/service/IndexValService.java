@@ -10,6 +10,7 @@ import com.sprint.findex_team6.exception.NotFoundException;
 import com.sprint.findex_team6.mapper.IndexValMapper;
 import com.sprint.findex_team6.repository.IndexRepository;
 import com.sprint.findex_team6.repository.IndexValRepository;
+import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,8 +37,8 @@ public class IndexValService {
         .versus(request.versus())
         .fluctuationRate(request.fluctuationRate())
         .tradingQuantity(request.tradingQuantity())
-        .tradingPrice(request.tradingPrice())
-        .marketTotalCount(request.marketTotalAmount())
+        .tradingPrice(BigDecimal.valueOf(request.tradingPrice()))
+        .marketTotalCount(BigDecimal.valueOf(request.marketTotalAmount()))
         .index(index)
         .build();
 
@@ -56,8 +57,8 @@ public class IndexValService {
     indexVal.setVersus(request.versus());
     indexVal.setFluctuationRate(request.fluctuationRate());
     indexVal.setTradingQuantity(request.tradingQuantity());
-    indexVal.setTradingPrice(request.tradingPrice());
-    indexVal.setMarketTotalCount(request.marketTotalAmount());
+    indexVal.setTradingPrice(BigDecimal.valueOf(request.tradingPrice()));
+    indexVal.setMarketTotalCount(BigDecimal.valueOf(request.marketTotalAmount()));
     return indexValMapper.toDto(indexVal);
   }
 
