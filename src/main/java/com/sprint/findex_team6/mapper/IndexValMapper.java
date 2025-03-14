@@ -16,6 +16,8 @@ import org.mapstruct.Named;
 @Mapper(componentModel = "spring", uses = {IndexValMapperHelper.class})
 @Named("IndexValMapper")
 public interface IndexValMapper {
+
+  @Mapping(source = "closePrice" , target = "closingPrice")
   @Mapping(source = "date", target = "baseDate")
   @Mapping(source = "index", target = "indexInfoId" , qualifiedByName = "indexInfoIdByIndex")
   @Mapping(source = "tradingQuantity", target = "tradingQuantity", qualifiedByName = "longToInt")
