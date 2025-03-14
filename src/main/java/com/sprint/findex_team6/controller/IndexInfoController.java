@@ -1,4 +1,4 @@
-package com.sprint.findex_team6.dto.controller;
+package com.sprint.findex_team6.controller;
 
 
 import com.sprint.findex_team6.dto.IndexInfoDto;
