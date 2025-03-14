@@ -6,7 +6,7 @@ import java.time.LocalDate;
 public record IndexInfoCreateRequest(
     String indexClassification,
     String indexName,
-    int employedItemsCount,
+    Integer employedItemsCount,
     LocalDate basePointInTime,
     BigDecimal baseIndex,
     boolean favorite
