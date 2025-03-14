@@ -15,7 +15,7 @@ CREATE TYPE source_type AS ENUM (
     'OPEN_API'
     );
 
-CREATE TYPE job_type AS ENUM (
+CREATE TYPE connect_type AS ENUM (
     'INDEX_INFO',
     'INDEX_DATA'
     );
@@ -52,8 +52,8 @@ CREATE TABLE index_val (
 
 CREATE TABLE index_data_link (
                                  id BIGSERIAL PRIMARY KEY,
-                                 index_val_id BIGINT NOT NULL REFERENCES index_val(id),
-                                 index_id BIGINT NOT NULL REFERENCES index(id),
+                                 index_val_id BIGINT REFERENCES index_val(id),
+                                 index_id BIGINT REFERENCES index(id),
                                  source_type connect_type NOT NULL,
                                  target_date DATE NOT NULL,
                                  worker VARCHAR NOT NULL,

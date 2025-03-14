@@ -7,6 +7,7 @@ import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.SourceType;
 import com.sprint.findex_team6.mapper.IndexMapper;
 import com.sprint.findex_team6.repository.IndexRepository;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -18,7 +19,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 
-//TODO : null이 들어오는 경우 오류 반환
 @Service
 @RequiredArgsConstructor
 public class IndexService {
@@ -26,6 +26,11 @@ public class IndexService {
   private IndexRepository indexRepository;
 
   public IndexInfoDto create(IndexInfoCreateRequest indexInfoCreateRequest){
+
+   if(hasNullFields(indexInfoCreateRequest)){
+     return null;
+   }
+
     String indexClassification = indexInfoCreateRequest.indexClassification();
     String indexName = indexInfoCreateRequest.indexName();
     LocalDate baseDate = indexInfoCreateRequest.basePointInTime();
@@ -44,7 +49,7 @@ public class IndexService {
     Integer employedItemsCount = request.employedItemsCount();
     LocalDate basePointInTime = request.basePointInTime();
     BigDecimal baseIndex = request.baseIndex();
-    boolean favorite = request.favorite();
+    Boolean favorite = request.favorite();
 
     Index index = null;
     if(indexRepository.findById(id).isPresent()){
@@ -62,8 +67,13 @@ public class IndexService {
       index.setBaseDate(basePointInTime);
     }
 
-    index.setBaseIndex(baseIndex);
-    index.setFavorite(favorite);
+    if(baseIndex != null){
+      index.setBaseIndex(baseIndex);
+    }
+
+    if(favorite != null){
+      index.setFavorite(favorite);
+    }
 
     indexRepository.save(index);
 
@@ -77,6 +87,20 @@ public class IndexService {
     }
 
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+  }
+
+  private boolean hasNullFields(Object obj) {
+    for (Field field : obj.getClass().getDeclaredFields()) {
+      field.setAccessible(true);
+      try {
+        if (field.get(obj) == null) {
+          return true;
+        }
+      } catch (IllegalAccessException e) {
+        e.printStackTrace();
+      }
+    }
+    return false;
   }
 
 }
