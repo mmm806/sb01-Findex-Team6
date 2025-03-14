@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -21,6 +22,7 @@ import org.hibernate.type.SqlTypes;
 @Entity
 @Getter
 @AllArgsConstructor
+@Table(name = "index_data_link")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class IndexDataLink {
 
