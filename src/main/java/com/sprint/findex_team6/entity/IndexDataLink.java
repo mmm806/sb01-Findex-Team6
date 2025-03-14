@@ -9,17 +9,19 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
-@NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "index_data_link")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class IndexDataLink {
 
   @Id
@@ -27,21 +29,15 @@ public class IndexDataLink {
   private Long id;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "source_type")
+  @Column(name = "source_type", columnDefinition = "source_type")
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
   private ContentType sourceType;              // 유형 ("지수 정보", "지수 데이터")
 
 
   // 연동된 지수 정보
-  @Column(name = "target_date")
-  private LocalDateTime targetDate;     // 연동된 데이터의 날짜
-
-  @Column(name = "worker")
+  private LocalDate targetDate;     // 연동된 데이터의 날짜
   private String worker;          // 작업자 (요청 IP 또는 "system")
-
-  @Column(name = "job_time")
   private LocalDateTime jobTime; // 작업일시
-
-  @Column
   private Boolean result;            // 결과 ("성공", "실패")
 
   //지수 정보
