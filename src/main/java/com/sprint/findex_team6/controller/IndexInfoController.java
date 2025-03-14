@@ -28,14 +28,8 @@ public class IndexInfoController {
   private final IndexService indexService;
 
   @PostMapping
-  public ResponseEntity<IndexInfoDto> create(@RequestBody IndexInfoCreateRequest request){
-    IndexInfoDto index = indexService.create(request);
-
-    if(index == null){
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-    }
-
-    return ResponseEntity.status(HttpStatus.CREATED).body(index);
+  public ResponseEntity<?> create(@RequestBody IndexInfoCreateRequest request){
+    return indexService.create(request);
   }
 
   @PatchMapping("/{id}")

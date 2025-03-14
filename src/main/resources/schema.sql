@@ -44,7 +44,7 @@ CREATE TABLE index_val (
                            low_price NUMERIC NOT NULL,
                            versus NUMERIC NOT NULL,
                            fluctuation_rate NUMERIC NOT NULL,
-                           trading_quantity INTEGER NOT NULL,
+                           trading_quantity BIGINT NOT NULL,
                            trading_price NUMERIC NOT NULL,
                            market_total_count NUMERIC NOT NULL,
                            UNIQUE (index_id,date)

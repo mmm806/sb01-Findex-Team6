@@ -3,6 +3,7 @@ package com.sprint.findex_team6.service;
 import com.sprint.findex_team6.dto.IndexInfoDto;
 import com.sprint.findex_team6.dto.request.IndexInfoCreateRequest;
 import com.sprint.findex_team6.dto.request.IndexInfoUpdateRequest;
+import com.sprint.findex_team6.dto.response.ErrorResponse;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.SourceType;
 import com.sprint.findex_team6.mapper.IndexMapper;
@@ -10,6 +11,7 @@ import com.sprint.findex_team6.repository.IndexRepository;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -25,10 +27,12 @@ public class IndexService {
   private IndexMapper indexMapper;
   private IndexRepository indexRepository;
 
-  public IndexInfoDto create(IndexInfoCreateRequest indexInfoCreateRequest){
+  public ResponseEntity<?> create(IndexInfoCreateRequest indexInfoCreateRequest){
 
    if(hasNullFields(indexInfoCreateRequest)){
-     return null;
+     String checkNullField = checkNullField(indexInfoCreateRequest) + "는 필수입니다.";
+     ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(),HttpStatus.BAD_REQUEST.value(),"잘못된 요청입니다.", "");
+     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
    }
 
     String indexClassification = indexInfoCreateRequest.indexClassification();
@@ -42,7 +46,7 @@ public class IndexService {
         SourceType.USER, favorite);
     indexRepository.save(index);
 
-    return indexMapper.toDto(index);
+    return ResponseEntity.status(HttpStatus.CREATED).body(indexMapper.toDto(index));
   }
 
   public IndexInfoDto update(IndexInfoUpdateRequest request, Long id){
@@ -101,6 +105,21 @@ public class IndexService {
       }
     }
     return false;
+  }
+
+  private String checkNullField(Object obj){
+    for(Field field : obj.getClass().getDeclaredFields()){
+      field.setAccessible(true);
+      try {
+        if (field.get(obj) == null) {
+          return field.getName();
+        }
+      } catch (IllegalAccessException e) {
+        e.printStackTrace();
+      }
+    }
+
+    return null;
   }
 
 }
