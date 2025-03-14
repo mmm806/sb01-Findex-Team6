@@ -8,14 +8,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class IndexValMapperHelper {
 
-  @Named("decimalToInt")
-  public Integer decimalToInt(BigDecimal decimal){
-    return decimal.intValue();
-  }
-
-  @Named("longToInt")
-  public Integer longToInt(Long num){
-    return num.intValue();
+  @Named("decimalToLong")
+  public Long decimalToInt(BigDecimal decimal){
+    return decimal.longValue();
   }
 
   @Named("indexInfoIdByIndex")

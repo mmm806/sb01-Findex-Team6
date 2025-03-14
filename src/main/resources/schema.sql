@@ -26,7 +26,7 @@ CREATE TABLE index (
                        index_classification VARCHAR NOT NULL,
                        index_name VARCHAR UNIQUE NOT NULL,
                        employed_items_count INTEGER NOT NULL,
-                       base_date TIMESTAMP NOT NULL,
+                       base_date DATE NOT NULL,
                        base_index NUMERIC NOT NULL,
                        source_type source_type NOT NULL,
                        favorite BOOLEAN NOT NULL
@@ -35,7 +35,7 @@ CREATE TABLE index (
 CREATE TABLE index_val (
                            id BIGSERIAL PRIMARY KEY,
                            index_id BIGINT NOT NULL UNIQUE REFERENCES index(id),
-                           date TIMESTAMP NOT NULL UNIQUE,
+                           date DATE NOT NULL UNIQUE,
                            source_type source_type NOT NULL,
                            market_price NUMERIC NOT NULL,
                            close_price NUMERIC NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE index_val (
                            low_price NUMERIC NOT NULL,
                            versus NUMERIC NOT NULL,
                            fluctuation_rate NUMERIC NOT NULL,
-                           trading_quantity INTEGER NOT NULL,
+                           trading_quantity BIGINT NOT NULL,
                            trading_price NUMERIC NOT NULL,
                            market_total_count NUMERIC NOT NULL
 );

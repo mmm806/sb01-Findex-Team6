@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
@@ -17,6 +18,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
@@ -34,7 +37,8 @@ public class IndexVal {
   private LocalDate date;         // 기준 일자
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "source_type")
+  @Column(name = "source_type", columnDefinition = "source_type")
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
   private SourceType sourceType;      // 소스 타입
 
   @Column(name = "market_price")
@@ -65,11 +69,12 @@ public class IndexVal {
   private BigDecimal marketTotalCount;    // 상장 시가 총액
 
   @ManyToOne //하나의 지수정보에 대해 여러개의 지수 데이터
+  @JoinColumn(name = "index_id")
   private Index index;
 
   @Builder
   public IndexVal(
-      LocalDate baseDate,
+      LocalDate date,
       SourceType sourceType,
       BigDecimal marketPrice,
       BigDecimal closePrice,
@@ -82,7 +87,7 @@ public class IndexVal {
       BigDecimal marketTotalCount,
       Index index
   ) {
-    this.date = baseDate;
+    this.date = date;
     this.sourceType = sourceType;
     this.marketPrice = marketPrice;
     this.closePrice = closePrice;
