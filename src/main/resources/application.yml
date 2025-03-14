@@ -1,0 +1,33 @@
+springdoc:
+  default-produces-media-type: application/json
+  show-actuator: 'true'
+  swagger-ui:
+    disable-swagger-default-url: 'true'
+    path: /swagger-custom-ui.html
+    groups-order: DESC
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: 'true'
+  api-docs:
+    path: /api-docs
+  default-consumes-media-type: application/json
+  paths-to-match: /api/**
+spring:
+  jpa:
+    database: postgresql
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: 'true'
+  application:
+    name: findex_team6
+  datasource:
+    password: findex1234
+    driver-class-name: org.postgresql.Driver
+    username: findex_user
+    url: jdbc:postgresql://localhost:8080/findex
+server:
+  port: '8081'
+# 저는 5432 포트가 작동을 안해서 8080으로 지정해 두었습니다! 5432 포트 작동 되시는 분들은 8080 부분을
+#5432로 고치시고 server : port : '8081' 부분을 제거하시면 localhost:8080에서 잘 돌아갈겁니다!
