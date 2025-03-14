@@ -25,7 +25,6 @@ class IndexDateLinkMapperTest {
         LocalDate.of(1980, 1, 1),
         BigDecimal.ONE, SourceType.USER,
         false);
-
     IndexDataLink indexDataLink = new IndexDataLink(
         2L,
         ContentType.INDEX_INFO,
