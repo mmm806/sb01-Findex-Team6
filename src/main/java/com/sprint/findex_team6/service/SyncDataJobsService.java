@@ -163,7 +163,8 @@ public class SyncDataJobsService {
    * @author : wongil
    * @Description: 외부 API를 호출하고 SyncJobDto 반환
    **/
-  private Flux<SyncJobDto> convertToSyncJobDtoFlux(WebClient webClient, IndexDataSyncRequest request,
+  private Flux<SyncJobDto> convertToSyncJobDtoFlux(WebClient webClient,
+      IndexDataSyncRequest request,
       Mono<List<Index>> indexListMono, HttpServletRequest httpRequest) {
 
     return webClient.get()
@@ -172,9 +173,10 @@ public class SyncDataJobsService {
             .queryParam("resultType", "json")
             .queryParam("beginBasDt", convertToStringDateFormat(request.baseDateFrom()))
             .queryParam("endBasDt", convertToStringDateFormat(request.baseDateTo()))
-            .queryParam("pageNo", 1) // 1페이지부터
-            .queryParam("numOfRows", 100) // 기본적으로 데이터 100개씩 땡겨오기
-            .build())
+            .queryParam("pageNo", 1)
+            .queryParam("numOfRows", 100)
+            .build()
+        )
         .accept(MediaType.APPLICATION_JSON)
         .retrieve()
         .bodyToMono(String.class) // json을 문자열로 바꿈
@@ -183,6 +185,8 @@ public class SyncDataJobsService {
           JsonNode items = findItems(response);
           int numOfRows = getNumOfRows(items);
           int totalPages = getTotalPages(items);
+
+          System.out.println("totalPages = " + totalPages);
 
           return indexListMono.flatMapMany(indexList -> {
 
@@ -222,7 +226,8 @@ public class SyncDataJobsService {
    * @author : wongil
    * @Description: List<SyncJobDto> -> Flux로 변환
    **/
-  private Flux<SyncJobDto> convertToSyncJobDtoFlux(HttpServletRequest httpRequest, List<Index> indexList,
+  private Flux<SyncJobDto> convertToSyncJobDtoFlux(HttpServletRequest httpRequest,
+      List<Index> indexList,
       JsonNode items) {
     List<SyncJobDto> syncJobDtoList = getSyncJobDtoList(items, indexList, httpRequest);
 
@@ -230,11 +235,11 @@ public class SyncDataJobsService {
   }
 
   /**
-  * @methodName : fetch
-  * @date : 2025-03-15 오후 4:35
-  * @author : wongil
-  * @Description: 나머지 pageNumber와 numberOfRows에 대하여 API 호출해서 데이터 뽑기
-  **/
+   * @methodName : fetch
+   * @date : 2025-03-15 오후 4:35
+   * @author : wongil
+   * @Description: 나머지 pageNumber와 numberOfRows에 대하여 API 호출해서 데이터 뽑기
+   **/
   private Flux<SyncJobDto> fetch(WebClient webClient, IndexDataSyncRequest request,
       List<Index> indexList, HttpServletRequest httpRequest, int pageNumber, int numOfRows) {
 
@@ -260,24 +265,27 @@ public class SyncDataJobsService {
   }
 
   /**
-  * @methodName : getTotalPages
-  * @date : 2025-03-15 오후 4:36
-  * @author : wongil
-  * @Description: 총 페이지 수 구하기
-  **/
+   * @methodName : getTotalPages
+   * @date : 2025-03-15 오후 4:36
+   * @author : wongil
+   * @Description: 총 페이지 수 구하기
+   **/
   private int getTotalPages(JsonNode items) {
     int numOfRows = getNumOfRows(items);
     int totalCount = getTotalCount(items);
+
+    System.out.println("numOfRows: " + numOfRows);
+    System.out.println("totalCount: " + totalCount);
 
     return (int) Math.ceil((double) totalCount / numOfRows);
   }
 
   /**
-  * @methodName : getTotalCount
-  * @date : 2025-03-15 오후 4:36
-  * @author : wongil
-  * @Description: API 응답 바디에서 totalCount만 뽑기
-  **/
+   * @methodName : getTotalCount
+   * @date : 2025-03-15 오후 4:36
+   * @author : wongil
+   * @Description: API 응답 바디에서 totalCount만 뽑기
+   **/
   private int getTotalCount(JsonNode items) {
     return items.path("response")
         .path("body")
@@ -286,11 +294,11 @@ public class SyncDataJobsService {
   }
 
   /**
-  * @methodName : getNumOfRows
-  * @date : 2025-03-15 오후 4:36
-  * @author : wongil
-  * @Description: API 응답 바디에서 numOfRows 뽑기
-  **/
+   * @methodName : getNumOfRows
+   * @date : 2025-03-15 오후 4:36
+   * @author : wongil
+   * @Description: API 응답 바디에서 numOfRows 뽑기
+   **/
   private int getNumOfRows(JsonNode items) {
     return items.path("response")
         .path("body")
@@ -319,7 +327,11 @@ public class SyncDataJobsService {
 
     LocalDateTime nowLocalDateTime = LocalDateTime.now();
 
-    return addSyncJob(items, indexList, nowLocalDateTime, httpRequest);
+    return addSyncJob(items
+        .path("response")
+        .path("body")
+        .path("items")
+        .path("item"), indexList, nowLocalDateTime, httpRequest);
   }
 
   /**
@@ -332,27 +344,25 @@ public class SyncDataJobsService {
       LocalDateTime nowLocalDateTime, HttpServletRequest httpRequest) {
 
     List<SyncJobDto> syncJobDtoList = new ArrayList<>();
-    Iterator<Index> iterator = indexList.iterator();
 
     for (JsonNode item : items) {
       LocalDate targetDate = getTargetDate(item);
 
-      Index index = getIndex(iterator);
-      if (index == null) {
-        continue;
+      for (Index index : indexList) {
+        SyncJobDto dto = SyncJobDto.builder()
+            .id(index.getId())
+            .jobType(ContentType.INDEX_DATA)
+            .indexInfoId(getIndexId(index))
+            .targetDate(targetDate)
+            .worker(getWorker(index, httpRequest))
+            .jobTime(nowLocalDateTime)
+            .result(isCompleteSync())
+            .build();
+
+        syncJobDtoList.add(dto);
       }
 
-      SyncJobDto dto = SyncJobDto.builder()
-          .id(index.getId())
-          .jobType(ContentType.INDEX_DATA)
-          .indexInfoId(getIndexId(index))
-          .targetDate(targetDate)
-          .worker(getWorker(index, httpRequest))
-          .jobTime(nowLocalDateTime)
-          .result(isCompleteSync())
-          .build();
-
-      syncJobDtoList.add(dto);
+      return syncJobDtoList;
     }
 
     return syncJobDtoList;
@@ -444,11 +454,7 @@ public class SyncDataJobsService {
      }
      }
      */
-    return jsonNode
-        .path("response")
-        .path("body")
-        .path("items")
-        .path("item");
+    return jsonNode;
   }
 
   /**
