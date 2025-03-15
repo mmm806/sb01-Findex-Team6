@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -106,24 +107,32 @@ public class SyncDataJobsService {
    * @Description: Flux 안에 있는 SyncJobDto를 각각 실제 repository에 저장
    **/
   private Mono<Void> save(SyncJobDto dto) {
-
     Boolean result = isSuccessOrFalse(dto.result());
 
     return Mono.fromCallable(() -> {
+          Index index = findIndex(dto.indexInfoId());
+
+          if (dto.indexInfoId() == null || index == null) {
+            return null;
+          }
+
           IndexDataLink syncData = new IndexDataLink(
-              dto.id(),
+              null,
               dto.jobType(),
               dto.targetDate(),
               dto.worker(),
               dto.jobTime(),
               result,
-              findIndex(dto.indexInfoId()));
+              index);
 
-          indexDataLinkRepository.save(syncData);
-
-          return syncData;
+          return indexDataLinkRepository.save(syncData);
         })
         .subscribeOn(Schedulers.boundedElastic())
+        .filter(Objects::nonNull)  // null 결과는 필터링
+        .onErrorResume(e -> {
+          log.error("Error in save operation: {}", e.getMessage(), e);
+          return Mono.empty();
+        })
         .then();
   }
 
@@ -138,11 +147,11 @@ public class SyncDataJobsService {
   }
 
   /**
-  * @methodName : findIndex
-  * @date : 2025-03-15 오후 2:23
-  * @author : wongil
-  * @Description: indexRepository에서 지수 꺼내오기
-  **/
+   * @methodName : findIndex
+   * @date : 2025-03-15 오후 2:23
+   * @author : wongil
+   * @Description: indexRepository에서 지수 꺼내오기
+   **/
   private Index findIndex(Long indexId) {
     return indexRepository.findById(indexId)
         .orElse(null);
@@ -161,7 +170,7 @@ public class SyncDataJobsService {
         .uri(uriBuilder -> uriBuilder
             .queryParam("serviceKey", API_KEY)
             .queryParam("resultType", "json")
-            .queryParam("basDt", convertToStringDateFormat(request.baseDateFrom()))
+            .queryParam("beginBasDt", convertToStringDateFormat(request.baseDateFrom()))
             .queryParam("endBasDt", convertToStringDateFormat(request.baseDateTo()))
             .build())
         .accept(MediaType.APPLICATION_JSON)
@@ -210,7 +219,8 @@ public class SyncDataJobsService {
    * @author : wongil
    * @Description: JsonNode Item -> SyncJobDto 변환 후 syncJobDtoList에 각각 추가
    **/
-  private List<SyncJobDto> addSyncJob(JsonNode items, List<Index> indexList, LocalDateTime nowLocalDateTime, HttpServletRequest httpRequest) {
+  private List<SyncJobDto> addSyncJob(JsonNode items, List<Index> indexList,
+      LocalDateTime nowLocalDateTime, HttpServletRequest httpRequest) {
 
     List<SyncJobDto> syncJobDtoList = new ArrayList<>();
     Iterator<Index> iterator = indexList.iterator();
@@ -219,9 +229,12 @@ public class SyncDataJobsService {
       LocalDate targetDate = getTargetDate(item);
 
       Index index = getIndex(iterator);
+      if (index == null) {
+        continue;
+      }
 
       SyncJobDto dto = SyncJobDto.builder()
-          .id(getIndexId(index))
+          .id(index.getId())
           .jobType(ContentType.INDEX_DATA)
           .indexInfoId(getIndexId(index))
           .targetDate(targetDate)
