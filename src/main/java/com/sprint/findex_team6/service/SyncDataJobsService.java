@@ -9,8 +9,8 @@ import com.sprint.findex_team6.entity.ContentType;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexDataLink;
 import com.sprint.findex_team6.entity.SourceType;
-import com.sprint.findex_team6.repository.IndexRepository;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
+import com.sprint.findex_team6.repository.IndexRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -117,7 +117,7 @@ public class SyncDataJobsService {
               dto.worker(),
               dto.jobTime(),
               result,
-              findIndex());
+              findIndex(dto.indexInfoId()));
 
           indexDataLinkRepository.save(syncData);
 
@@ -137,9 +137,15 @@ public class SyncDataJobsService {
     return !result.equals("FAILED");
   }
 
-  // TODO: 지수 정보 찾기
-  private Index findIndex() {
-    return null;
+  /**
+  * @methodName : findIndex
+  * @date : 2025-03-15 오후 2:23
+  * @author : wongil
+  * @Description: indexRepository에서 지수 꺼내오기
+  **/
+  private Index findIndex(Long indexId) {
+    return indexRepository.findById(indexId)
+        .orElse(null);
   }
 
   /**
