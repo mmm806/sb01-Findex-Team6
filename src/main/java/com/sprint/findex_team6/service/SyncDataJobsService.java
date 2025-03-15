@@ -274,9 +274,6 @@ public class SyncDataJobsService {
     int numOfRows = getNumOfRows(items);
     int totalCount = getTotalCount(items);
 
-    System.out.println("numOfRows: " + numOfRows);
-    System.out.println("totalCount: " + totalCount);
-
     return (int) Math.ceil((double) totalCount / numOfRows);
   }
 
