@@ -92,7 +92,7 @@ public class SyncDataJobsService {
       IndexDataSyncRequest request, Mono<List<Index>> indexListMono,
       HttpServletRequest httpRequest) {
 
-    return getSyncJobDtoFlux(webClient, request, indexListMono, httpRequest)
+    return convertToSyncJobDtoFlux(webClient, request, indexListMono, httpRequest)
         .collectSortedList( // 1. 지수, 2. 날짜 별로 정렬
             Comparator.comparing(SyncJobDto::id, Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(SyncJobDto::targetDate,
@@ -163,7 +163,7 @@ public class SyncDataJobsService {
    * @author : wongil
    * @Description: 외부 API를 호출하고 SyncJobDto 반환
    **/
-  private Flux<SyncJobDto> getSyncJobDtoFlux(WebClient webClient, IndexDataSyncRequest request,
+  private Flux<SyncJobDto> convertToSyncJobDtoFlux(WebClient webClient, IndexDataSyncRequest request,
       Mono<List<Index>> indexListMono, HttpServletRequest httpRequest) {
 
     return webClient.get()
@@ -172,6 +172,8 @@ public class SyncDataJobsService {
             .queryParam("resultType", "json")
             .queryParam("beginBasDt", convertToStringDateFormat(request.baseDateFrom()))
             .queryParam("endBasDt", convertToStringDateFormat(request.baseDateTo()))
+            .queryParam("pageNo", 1) // 1페이지부터
+            .queryParam("numOfRows", 100) // 기본적으로 데이터 100개씩 땡겨오기
             .build())
         .accept(MediaType.APPLICATION_JSON)
         .retrieve()
@@ -179,14 +181,121 @@ public class SyncDataJobsService {
         .flatMapMany(response -> {
 
           JsonNode items = findItems(response);
+          int numOfRows = getNumOfRows(items);
+          int totalPages = getTotalPages(items);
 
           return indexListMono.flatMapMany(indexList -> {
 
-            List<SyncJobDto> syncJobDtoList = getSyncJobDtoList(items, indexList, httpRequest);
+            Flux<SyncJobDto> syncFlux = convertToSyncJobDtoFlux(httpRequest, indexList, items);
 
-            return Flux.fromIterable(syncJobDtoList);
+            return getNextPageSyncJobDtoFlux(webClient, request, httpRequest, indexList, totalPages,
+                numOfRows,
+                syncFlux);
           });
         });
+  }
+
+  /**
+   * @methodName : getNextPageSyncJobDtoFlux
+   * @date : 2025-03-15 오후 4:32
+   * @author : wongil
+   * @Description: 데이터의 양이 많아 페이지가 많으면 2페이지부터 totalPages - 1 번까지 반복해서 API 호출해서 데이터 가져오기
+   **/
+  private Flux<SyncJobDto> getNextPageSyncJobDtoFlux(WebClient webClient,
+      IndexDataSyncRequest request,
+      HttpServletRequest httpRequest, List<Index> indexList, int totalPages, int numOfRows,
+      Flux<SyncJobDto> syncFlux) {
+    if (totalPages > 1) {
+      Flux<SyncJobDto> syncJobDtoFlux = Flux.range(2, totalPages - 1)
+          .flatMap(pageNumber ->
+              fetch(webClient, request, indexList, httpRequest, pageNumber, numOfRows));
+
+      return syncFlux.concatWith(syncJobDtoFlux);
+    }
+
+    return syncFlux;
+  }
+
+  /**
+   * @methodName : getSyncJobDtoFlux
+   * @date : 2025-03-15 오후 4:34
+   * @author : wongil
+   * @Description: List<SyncJobDto> -> Flux로 변환
+   **/
+  private Flux<SyncJobDto> convertToSyncJobDtoFlux(HttpServletRequest httpRequest, List<Index> indexList,
+      JsonNode items) {
+    List<SyncJobDto> syncJobDtoList = getSyncJobDtoList(items, indexList, httpRequest);
+
+    return Flux.fromIterable(syncJobDtoList);
+  }
+
+  /**
+  * @methodName : fetch
+  * @date : 2025-03-15 오후 4:35
+  * @author : wongil
+  * @Description: 나머지 pageNumber와 numberOfRows에 대하여 API 호출해서 데이터 뽑기
+  **/
+  private Flux<SyncJobDto> fetch(WebClient webClient, IndexDataSyncRequest request,
+      List<Index> indexList, HttpServletRequest httpRequest, int pageNumber, int numOfRows) {
+
+    return webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .queryParam("serviceKey", API_KEY)
+            .queryParam("resultType", "json")
+            .queryParam("beginBasDt", convertToStringDateFormat(request.baseDateFrom()))
+            .queryParam("endBasDt", convertToStringDateFormat(request.baseDateTo()))
+            .queryParam("pageNo", pageNumber)
+            .queryParam("numOfRows", numOfRows)
+            .build()
+        )
+        .accept(MediaType.APPLICATION_JSON)
+        .retrieve()
+        .bodyToMono(String.class)
+        .flatMapMany(response -> {
+          JsonNode items = findItems(response);
+
+          List<SyncJobDto> syncJobDtoList = getSyncJobDtoList(items, indexList, httpRequest);
+          return Flux.fromIterable(syncJobDtoList);
+        });
+  }
+
+  /**
+  * @methodName : getTotalPages
+  * @date : 2025-03-15 오후 4:36
+  * @author : wongil
+  * @Description: 총 페이지 수 구하기
+  **/
+  private int getTotalPages(JsonNode items) {
+    int numOfRows = getNumOfRows(items);
+    int totalCount = getTotalCount(items);
+
+    return (int) Math.ceil((double) totalCount / numOfRows);
+  }
+
+  /**
+  * @methodName : getTotalCount
+  * @date : 2025-03-15 오후 4:36
+  * @author : wongil
+  * @Description: API 응답 바디에서 totalCount만 뽑기
+  **/
+  private int getTotalCount(JsonNode items) {
+    return items.path("response")
+        .path("body")
+        .path("totalCount")
+        .asInt();
+  }
+
+  /**
+  * @methodName : getNumOfRows
+  * @date : 2025-03-15 오후 4:36
+  * @author : wongil
+  * @Description: API 응답 바디에서 numOfRows 뽑기
+  **/
+  private int getNumOfRows(JsonNode items) {
+    return items.path("response")
+        .path("body")
+        .path("numOfRows")
+        .asInt();
   }
 
   /**
