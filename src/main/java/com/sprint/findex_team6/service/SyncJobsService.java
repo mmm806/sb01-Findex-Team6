@@ -37,7 +37,7 @@ import reactor.core.scheduler.Schedulers;
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class SyncDataJobsService {
+public class SyncJobsService {
 
   private final IndexDataLinkRepository indexDataLinkRepository;
   private final IndexRepository indexRepository;
@@ -47,6 +47,46 @@ public class SyncDataJobsService {
 
   @Value("${api.stock.key}")
   private String API_KEY;
+
+  /**
+   * @methodName : syncInfo
+   * @date : 2025-03-15 오후 10:16
+   * @author : wongil
+   * @Description: 지수 정보 연동
+   **/
+//  public Flux<SyncJobDto> syncInfo() {
+//    WebClient webClient = getWebClient();
+//
+//    getCallOpenApi(webClient)
+//        .flatMapMany(response -> {
+//          JsonNode items = findItems(response);
+//
+//        })
+//
+//
+//    return null;
+//  }
+
+  /**
+   * @methodName : getCallOpenApi
+   * @date : 2025-03-16 오후 2:04
+   * @author : wongil
+   * @Description: 지수 정보를 가져오기 위한 코드 현재 날짜로부터 -3일까지의 데이터만 긁어옴
+   **/
+  private Mono<String> getAllInfosByCallOpenApi(WebClient webClient) {
+    return webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .queryParam("serviceKey", API_KEY)
+            .queryParam("resultType", "json")
+            .queryParam("beginBasDt", convertToStringDateFormat(LocalDate.now().minusDays(3)))
+            .queryParam("pageNo", 1)
+            .queryParam("numOfRows", 100)
+            .build()
+        )
+        .accept(MediaType.APPLICATION_JSON)
+        .retrieve()
+        .bodyToMono(String.class);
+  }
 
   /**
    * @methodName : syncData
@@ -64,9 +104,27 @@ public class SyncDataJobsService {
     return getSyncJobDtoMono(webClient, request, indexListMono, httpRequest)
         .flatMapMany(Flux::fromIterable) // Mono<List> -> Flux 스트림으로 변환
         .flatMap(
-            dto -> save(dto) // ItemDateLink -> repository에 저장
-                .thenReturn(dto)
-        );
+            dto ->
+                save(dto) // ItemDateLink -> repository에 저장
+                    .then(Mono.fromCallable(() -> getSavedIndexDataLinkId(dto))
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .map(id -> {
+                      dto.setId(id);
+                      return dto;
+                    })
+        ));
+  }
+
+  /**
+  * @methodName : getSavedIndexDataLinkId
+  * @date : 2025-03-16 오후 2:43
+  * @author : wongil
+  * @Description: 저장된 IndexDataLink의 id값 가져오기
+  **/
+  private Long getSavedIndexDataLinkId(SyncJobDto dto) {
+    IndexDataLink savedIndexDataLink = indexDataLinkRepository.findByIndex_IdAndAndTargetDateAndJobTime(dto.getIndexInfoId(),
+        dto.getTargetDate(), dto.getJobTime());;
+    return savedIndexDataLink.getId();
   }
 
   /**
@@ -94,8 +152,8 @@ public class SyncDataJobsService {
 
     return convertToSyncJobDtoFlux(webClient, request, indexListMono, httpRequest)
         .collectSortedList( // 1. 지수, 2. 날짜 별로 정렬
-            Comparator.comparing(SyncJobDto::id, Comparator.nullsLast(Comparator.naturalOrder()))
-                .thenComparing(SyncJobDto::targetDate,
+            Comparator.comparing(SyncJobDto::getId, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(SyncJobDto::getTargetDate,
                     Comparator.nullsLast(Comparator.naturalOrder()))
         );
   }
@@ -107,21 +165,21 @@ public class SyncDataJobsService {
    * @Description: Flux 안에 있는 SyncJobDto를 각각 실제 repository에 저장
    **/
   private Mono<Void> save(SyncJobDto dto) {
-    Boolean result = isSuccessOrFalse(dto.result());
+    Boolean result = isSuccessOrFalse(dto.getResult());
 
     return Mono.fromCallable(() -> {
-          Index index = findIndex(dto.indexInfoId());
+          Index index = findIndex(dto.getIndexInfoId());
 
-          if (dto.indexInfoId() == null || index == null) {
+          if (dto.getIndexInfoId() == null || index == null) {
             return null;
           }
 
           IndexDataLink syncData = new IndexDataLink(
-              null,
-              dto.jobType(),
-              dto.targetDate(),
-              dto.worker(),
-              dto.jobTime(),
+              dto.getId(),
+              dto.getJobType(),
+              dto.getTargetDate(),
+              dto.getWorker(),
+              dto.getJobTime(),
               result,
               index);
 
@@ -186,8 +244,6 @@ public class SyncDataJobsService {
           int numOfRows = getNumOfRows(items);
           int totalPages = getTotalPages(items);
 
-          System.out.println("totalPages = " + totalPages);
-
           return indexListMono.flatMapMany(indexList -> {
 
             Flux<SyncJobDto> syncFlux = convertToSyncJobDtoFlux(httpRequest, indexList, items);
@@ -209,6 +265,7 @@ public class SyncDataJobsService {
       IndexDataSyncRequest request,
       HttpServletRequest httpRequest, List<Index> indexList, int totalPages, int numOfRows,
       Flux<SyncJobDto> syncFlux) {
+
     if (totalPages > 1) {
       Flux<SyncJobDto> syncJobDtoFlux = Flux.range(2, totalPages - 1)
           .flatMap(pageNumber ->
@@ -229,6 +286,7 @@ public class SyncDataJobsService {
   private Flux<SyncJobDto> convertToSyncJobDtoFlux(HttpServletRequest httpRequest,
       List<Index> indexList,
       JsonNode items) {
+
     List<SyncJobDto> syncJobDtoList = getSyncJobDtoList(items, indexList, httpRequest);
 
     return Flux.fromIterable(syncJobDtoList);
@@ -347,7 +405,7 @@ public class SyncDataJobsService {
 
       for (Index index : indexList) {
         SyncJobDto dto = SyncJobDto.builder()
-            .id(index.getId())
+            .id(null)
             .jobType(ContentType.INDEX_DATA)
             .indexInfoId(getIndexId(index))
             .targetDate(targetDate)
