@@ -79,12 +79,11 @@ public class SyncJobsService {
   }
 
   /**
-  * @methodName : getSyncDataJobDtoFlux
-  * @date : 2025-03-17 오전 9:35
-  * @author : wongil
-  * @Description: Index Data Link 엔티티를 실제로 저장
-   * Mono<List<SyncJobDto> -> Flux
-  **/
+   * @methodName : getSyncDataJobDtoFlux
+   * @date : 2025-03-17 오전 9:35
+   * @author : wongil
+   * @Description: Index Data Link 엔티티를 실제로 저장 Mono<List<SyncJobDto> -> Flux
+   **/
   private Flux<SyncJobDto> getSyncDataJobDtoFlux(IndexDataSyncRequest request,
       HttpServletRequest httpRequest, WebClient webClient, Mono<List<Index>> indexListMono) {
 
@@ -120,7 +119,8 @@ public class SyncJobsService {
           int totalPages = getTotalPages(countItems);
 
           Flux<SyncJobDto> syncJobDtoFlux = Flux.fromIterable(syncIndexInfoJobDtoList);
-          return getNextPageSyncInfoJobDtoFlux(syncJobDtoFlux, webClient, syncIndexInfoJobDtoList, numOfRows, totalPages);
+          return getNextPageSyncInfoJobDtoFlux(syncJobDtoFlux, webClient, syncIndexInfoJobDtoList,
+              numOfRows, totalPages);
 
         })
         .onErrorResume(e -> {
@@ -130,11 +130,11 @@ public class SyncJobsService {
   }
 
   /**
-  * @methodName : getItems
-  * @date : 2025-03-17 오전 9:56
-  * @author : wongil
-  * @Description: JsonNode에서 item 배열만 가져오기
-  **/
+   * @methodName : getItems
+   * @date : 2025-03-17 오전 9:56
+   * @author : wongil
+   * @Description: JsonNode에서 item 배열만 가져오기
+   **/
   private JsonNode getItems(String response) {
     JsonNode itemNodes = findItems(response);
 
@@ -142,11 +142,11 @@ public class SyncJobsService {
   }
 
   /**
-  * @methodName : saveIndex
-  * @date : 2025-03-17 오전 9:54
-  * @author : wongil
-  * @Description: items가 list인 경우 파싱해서 저장
-  **/
+   * @methodName : saveIndex
+   * @date : 2025-03-17 오전 9:54
+   * @author : wongil
+   * @Description: items가 list인 경우 파싱해서 저장
+   **/
   private List<SyncJobDto> saveIndex(List<SyncJobDto> syncIndexInfoJobDtoList, JsonNode items) {
     if (items.isArray()) {
       saveIndexInfo(items, syncIndexInfoJobDtoList);
@@ -156,15 +156,16 @@ public class SyncJobsService {
   }
 
   /**
-  * @methodName : getNextPageSyncInfoJobDtoFlux
-  * @date : 2025-03-17 오전 9:41
-  * @author : wongil
-  * @Description: 페이지의 수가 2개 이상인 경우 계속 돌면서 데이터 가져오기
-  **/
-  private Flux<SyncJobDto> getNextPageSyncInfoJobDtoFlux(Flux<SyncJobDto> syncJobDtoFlux, WebClient webClient, List<SyncJobDto> syncIndexInfoJobDtoList, int numOfRows,
+   * @methodName : getNextPageSyncInfoJobDtoFlux
+   * @date : 2025-03-17 오전 9:41
+   * @author : wongil
+   * @Description: 페이지의 수가 2개 이상인 경우 계속 돌면서 데이터 가져오기
+   **/
+  private Flux<SyncJobDto> getNextPageSyncInfoJobDtoFlux(Flux<SyncJobDto> syncJobDtoFlux,
+      WebClient webClient, List<SyncJobDto> syncIndexInfoJobDtoList, int numOfRows,
       int totalPages) {
 
-    if(totalPages > 1) {
+    if (totalPages > 1) {
 
       Flux<SyncJobDto> syncJobIndexInfoDtoFlux = Flux.range(2, totalPages - 1)
           .flatMap(pageNumber ->
@@ -220,11 +221,11 @@ public class SyncJobsService {
   }
 
   /**
-  * @methodName : parsingData
-  * @date : 2025-03-16 오후 10:06
-  * @author : wongil
-  * @Description: api 응답 json에서 파싱
-  **/
+   * @methodName : parsingData
+   * @date : 2025-03-16 오후 10:06
+   * @author : wongil
+   * @Description: api 응답 json에서 파싱
+   **/
   private JsonNode parsingData(JsonNode item) {
     return item
         .path("response")
@@ -290,7 +291,8 @@ public class SyncJobsService {
         .uri(uriBuilder -> uriBuilder
             .queryParam("serviceKey", API_KEY)
             .queryParam("resultType", "json")
-            .queryParam("beginBasDt", convertToStringDateFormat(LocalDate.now().minusDays(4))) // 일단 3일로
+            .queryParam("beginBasDt",
+                convertToStringDateFormat(LocalDate.now().minusDays(4))) // 일단 3일로
             .queryParam("pageNo", 1)
             .queryParam("numOfRows", 100)
             .build()
@@ -323,8 +325,14 @@ public class SyncJobsService {
    **/
   private Mono<List<Index>> findIndexListMonoByIds(List<Integer> indexInfoIds) {
 
-    return Mono.fromCallable(() ->
-            indexRepository.findAllByIdIn(indexInfoIds))
+    return Mono.fromCallable(() -> {
+          if (indexInfoIds == null || indexInfoIds.isEmpty() ) {
+            return indexRepository.findAll();
+          }
+          else {
+            return indexRepository.findAllByIdIn(indexInfoIds);
+          }
+        })
         .subscribeOn(Schedulers.boundedElastic());
   }
 
@@ -424,7 +432,8 @@ public class SyncJobsService {
 
             Flux<SyncJobDto> syncFlux = convertToSyncJobDtoFlux(httpRequest, indexList, items);
 
-            return getNextPageSyncDataJobDtoFlux(webClient, request, httpRequest, indexList, totalPages,
+            return getNextPageSyncDataJobDtoFlux(webClient, request, httpRequest, indexList,
+                totalPages,
                 numOfRows,
                 syncFlux);
           });
@@ -437,7 +446,8 @@ public class SyncJobsService {
    * @author : wongil
    * @Description: beginBasDt와 endBasDt 사이의 데이터 뽑기
    **/
-  private Mono<String> getBetweenDateInfoByOpenApi(WebClient webClient, IndexDataSyncRequest request) {
+  private Mono<String> getBetweenDateInfoByOpenApi(WebClient webClient,
+      IndexDataSyncRequest request) {
     return webClient.get()
         .uri(uriBuilder -> uriBuilder
             .queryParam("serviceKey", API_KEY)
