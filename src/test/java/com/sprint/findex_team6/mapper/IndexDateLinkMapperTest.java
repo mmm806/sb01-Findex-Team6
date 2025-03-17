@@ -4,7 +4,7 @@ package com.sprint.findex_team6.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sprint.findex_team6.dto.SyncJobDto;
-import com.sprint.findex_team6.entity.ConnectType;
+import com.sprint.findex_team6.entity.ContentType;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexDataLink;
 import com.sprint.findex_team6.entity.SourceType;
@@ -18,7 +18,7 @@ class IndexDateLinkMapperTest {
 
   @Test
   void toDto() {
-    Index index = new Index(1L,
+    Index index = new Index(
         "KOSPI",
         "KOSPI",
         3,
@@ -27,8 +27,8 @@ class IndexDateLinkMapperTest {
         false);
     IndexDataLink indexDataLink = new IndexDataLink(
         2L,
-        ConnectType.IDX_INFO,
-        LocalDateTime.now(),
+        ContentType.INDEX_INFO,
+        LocalDate.now(),
         "test",
         LocalDateTime.now(),
         true,
