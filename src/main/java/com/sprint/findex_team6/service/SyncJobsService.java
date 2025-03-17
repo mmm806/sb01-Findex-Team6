@@ -114,7 +114,6 @@ public class SyncJobsService {
     return getAllInfosByCallOpenApi(webClient)
         .flatMapMany(response -> {
           JsonNode items = getItems(response);
-          List<SyncJobDto> first = saveIndex(syncIndexInfoJobDtoList, items);
 
           JsonNode countItems = findItems(response);
           int numOfRows = getNumOfRows(countItems);
@@ -166,15 +165,10 @@ public class SyncJobsService {
       int totalPages) {
 
     if(totalPages > 1) {
-      log.info("Fetching additional pages. Total pages: {}", totalPages);
-
-      log.info("Will fetch from page 2 to page {}", totalPages);
 
       Flux<SyncJobDto> syncJobIndexInfoDtoFlux = Flux.range(2, totalPages - 1)
-          .doOnNext(pageNumber -> log.info("Processing page number: {}", pageNumber))
           .flatMap(pageNumber ->
-              fetchInfo(webClient, new ArrayList<>(), pageNumber, numOfRows)
-                  .doOnComplete(() -> log.info("Completed fetching page: {}", pageNumber)));
+              fetchInfo(webClient, new ArrayList<>(), pageNumber, numOfRows));
 
       return syncJobDtoFlux.concatWith(syncJobIndexInfoDtoFlux);
     }
@@ -252,6 +246,7 @@ public class SyncJobsService {
         .jobTime(LocalDateTime.now())
         .targetDate(savedIndex.getBaseDate())
         .indexInfoId(savedIndex.getId())
+        .result("SUCCESS") // 나중에 성공, 실패 로직 추가
         .worker("system")
         .build();
 
@@ -265,6 +260,7 @@ public class SyncJobsService {
    * @Description: 파싱된 데이터 가지고 Index 객체 생성
    **/
   private Index createIndex(JsonNode parsedData) {
+
     String indexClassification = parsedData.path("idxCsf").asText();
     String idxNm = parsedData.path("idxNm").asText();
     int employedItemsCount = parsedData.path("epyItmsCnt").asInt();
