@@ -1,4 +1,4 @@
-package com.sprint.findex_team6.dto;
+package com.sprint.findex_team6.dto.dashboard;
 
 public record DashboardDto(
     Long id,
