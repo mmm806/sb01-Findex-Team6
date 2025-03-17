@@ -5,7 +5,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface IndexDataLinkRepository extends JpaRepository<IndexDataLink, Long> {
+public interface IndexDataLinkRepository extends JpaRepository<IndexDataLink, Long>,
+    IndexDataLinkRepositoryQuerydsl {
 
-  IndexDataLink findByIndex_IdAndAndTargetDateAndJobTime(Long indexInfoId, LocalDate targetDate, LocalDateTime jobTime);
+  IndexDataLink findByIndex_IdAndTargetDateAndJobTime(Long indexInfoId, LocalDate targetDate, LocalDateTime jobTime);
+
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -33,7 +34,7 @@ public class IndexDataLink {
   @Enumerated(EnumType.STRING)
   @Column(name = "source_type", columnDefinition = "source_type")
   @JdbcTypeCode(SqlTypes.NAMED_ENUM)
-  private ContentType sourceType;              // 유형 ("지수 정보", "지수 데이터")
+  private ContentType jobType;              // 유형 ("지수 정보", "지수 데이터")
 
 
   // 연동된 지수 정보
@@ -43,7 +44,7 @@ public class IndexDataLink {
   private Boolean result;            // 결과 ("성공", "실패")
 
   //지수 정보
-  @ManyToOne //하나의 지수 정보는 여러번 연동 작업을 함
+  @ManyToOne(fetch = FetchType.LAZY) //하나의 지수 정보는 여러번 연동 작업을 함
   @JoinColumn(name = "index_id")
   private Index index; //연동된 지수 정보
 }

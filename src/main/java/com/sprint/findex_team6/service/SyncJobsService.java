@@ -308,7 +308,7 @@ public class SyncJobsService {
    **/
   private Long getSavedIndexDataLinkId(SyncJobDto dto) {
 
-    IndexDataLink savedIndexDataLink = indexDataLinkRepository.findByIndex_IdAndAndTargetDateAndJobTime(
+    IndexDataLink savedIndexDataLink = indexDataLinkRepository.findByIndex_IdAndTargetDateAndJobTime(
         dto.getIndexInfoId(),
         dto.getTargetDate(), dto.getJobTime());
 
