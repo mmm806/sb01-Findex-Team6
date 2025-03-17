@@ -4,11 +4,10 @@ import com.sprint.findex_team6.dto.CursorPageResponseSyncJobDto;
 import com.sprint.findex_team6.dto.SyncJobDto;
 import com.sprint.findex_team6.dto.request.IndexDataSyncRequest;
 import com.sprint.findex_team6.entity.ContentType;
-import com.sprint.findex_team6.service.SyncDataJobsService;
+import com.sprint.findex_team6.service.SyncJobsService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
@@ -33,7 +32,7 @@ import reactor.core.publisher.Flux;
 @RequiredArgsConstructor
 public class SyncJobsController {
 
-  private final SyncDataJobsService syncDataJobsService;
+  private final SyncJobsService syncJobsService;
 
   /**
    * @methodName : syncInfo
@@ -43,10 +42,10 @@ public class SyncJobsController {
    **/
   @ResponseStatus(HttpStatus.ACCEPTED)
   @PostMapping("/index-infos")
-  public List<SyncJobDto> syncInfo() {
-    //return syncJobsService.synchroInformation();
+  public Flux<SyncJobDto> syncInformation() {
+    return syncJobsService.syncInfo();
 
-    return null;
+
   }
 
   /**
@@ -60,7 +59,7 @@ public class SyncJobsController {
   public Flux<SyncJobDto> syncData(@RequestBody @Validated IndexDataSyncRequest request,
       HttpServletRequest httpRequest) {
 
-    return syncDataJobsService.syncData(request, httpRequest);
+    return syncJobsService.syncData(request, httpRequest);
   }
 
 
