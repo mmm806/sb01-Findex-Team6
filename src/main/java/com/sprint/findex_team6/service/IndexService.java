@@ -24,8 +24,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class IndexService {
-  private IndexMapper indexMapper;
-  private IndexRepository indexRepository;
+  private final IndexMapper indexMapper;
+  private final IndexRepository indexRepository;
 
   public ResponseEntity<?> create(IndexInfoCreateRequest indexInfoCreateRequest){
 

@@ -14,6 +14,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Getter
@@ -43,6 +45,7 @@ public class Index {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "source_type")
+  @JdbcTypeCode(SqlTypes.NAMED_ENUM)
   private SourceType sourceType;    // 소스 타입
 
   @Column
