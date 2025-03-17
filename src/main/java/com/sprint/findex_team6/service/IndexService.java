@@ -31,7 +31,7 @@ public class IndexService {
 
    if(hasNullFields(indexInfoCreateRequest)){
      String checkNullField = checkNullField(indexInfoCreateRequest) + "는 필수입니다.";
-     ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(),HttpStatus.BAD_REQUEST.value(),"잘못된 요청입니다.", "");
+     ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(),HttpStatus.BAD_REQUEST.value(),"잘못된 요청입니다.", checkNullField);
      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
    }
 
