@@ -8,6 +8,7 @@ import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.SourceType;
 import com.sprint.findex_team6.mapper.IndexMapper;
 import com.sprint.findex_team6.repository.IndexRepository;
+import jakarta.transaction.Transactional;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 public class IndexService {
   private final IndexMapper indexMapper;
