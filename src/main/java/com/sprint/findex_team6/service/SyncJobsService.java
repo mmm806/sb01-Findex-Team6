@@ -12,6 +12,7 @@ import com.sprint.findex_team6.entity.SourceType;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
 import com.sprint.findex_team6.repository.IndexRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -54,38 +55,11 @@ public class SyncJobsService {
    * @author : wongil
    * @Description: 지수 정보 연동
    **/
-//  public Flux<SyncJobDto> syncInfo() {
-//    WebClient webClient = getWebClient();
-//
-//    getCallOpenApi(webClient)
-//        .flatMapMany(response -> {
-//          JsonNode items = findItems(response);
-//
-//        })
-//
-//
-//    return null;
-//  }
+  public Flux<SyncJobDto> syncInfo() {
+    List<SyncJobDto> syncIndexInfoJobDtoList = new ArrayList<>();
+    WebClient webClient = getWebClient();
 
-  /**
-   * @methodName : getCallOpenApi
-   * @date : 2025-03-16 오후 2:04
-   * @author : wongil
-   * @Description: 지수 정보를 가져오기 위한 코드 현재 날짜로부터 -3일까지의 데이터만 긁어옴
-   **/
-  private Mono<String> getAllInfosByCallOpenApi(WebClient webClient) {
-    return webClient.get()
-        .uri(uriBuilder -> uriBuilder
-            .queryParam("serviceKey", API_KEY)
-            .queryParam("resultType", "json")
-            .queryParam("beginBasDt", convertToStringDateFormat(LocalDate.now().minusDays(3)))
-            .queryParam("pageNo", 1)
-            .queryParam("numOfRows", 100)
-            .build()
-        )
-        .accept(MediaType.APPLICATION_JSON)
-        .retrieve()
-        .bodyToMono(String.class);
+    return getSyncJobDtoFlux(webClient, syncIndexInfoJobDtoList);
   }
 
   /**
@@ -107,23 +81,147 @@ public class SyncJobsService {
             dto ->
                 save(dto) // ItemDateLink -> repository에 저장
                     .then(Mono.fromCallable(() -> getSavedIndexDataLinkId(dto))
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .map(id -> {
-                      dto.setId(id);
-                      return dto;
-                    })
-        ));
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .map(id -> {
+                          dto.setId(id);
+                          return dto;
+                        })
+                    ));
   }
 
   /**
-  * @methodName : getSavedIndexDataLinkId
-  * @date : 2025-03-16 오후 2:43
+   * @methodName : getSyncJobDtoFlux
+   * @date : 2025-03-16 오후 10:10
+   * @author : wongil
+   * @Description: 지수 정보를 실제로 저장하고 Flux로 반환
+   **/
+  private Flux<SyncJobDto> getSyncJobDtoFlux(WebClient webClient,
+      List<SyncJobDto> syncIndexInfoJobDtoList) {
+
+    return getAllInfosByCallOpenApi(webClient)
+        .flatMapMany(response -> {
+          JsonNode itemNodes = findItems(response);
+          JsonNode items = parsingData(itemNodes);
+
+          if (items.isArray()) {
+            saveIndexInfo(items, syncIndexInfoJobDtoList);
+          }
+
+          return Flux.fromIterable(syncIndexInfoJobDtoList);
+        })
+        .onErrorResume(e -> {
+          log.error("Sync job error: {}", e.getMessage(), e);
+          return Flux.empty();
+        });
+  }
+
+  /**
+   * @methodName : saveIndexInfo
+   * @date : 2025-03-16 오후 10:07
+   * @author : wongil
+   * @Description: 파싱된 item 가지고 실제 Index 객체 만들어서 db에 저장
+   **/
+  private void saveIndexInfo(JsonNode items, List<SyncJobDto> syncIndexInfoJobDtoList) {
+    for (JsonNode item : items) {
+
+      Index index = createIndex(item);
+
+      Index savedIndex = indexRepository.save(index);
+
+      createSynJobDtoList(savedIndex, syncIndexInfoJobDtoList);
+    }
+  }
+
+  /**
+  * @methodName : parsingData
+  * @date : 2025-03-16 오후 10:06
   * @author : wongil
-  * @Description: 저장된 IndexDataLink의 id값 가져오기
+  * @Description: api 응답 json에서 파싱
   **/
+  private JsonNode parsingData(JsonNode item) {
+    return item
+        .path("response")
+        .path("body")
+        .path("items")
+        .path("item");
+  }
+
+  /**
+   * @methodName : createSynJobDtoList
+   * @date : 2025-03-16 오후 10:05
+   * @author : wongil
+   * @Description: dto flux를 위해 리스트에 추가
+   **/
+  private void createSynJobDtoList(Index savedIndex, List<SyncJobDto> syncIndexInfoJobDtoList) {
+    SyncJobDto dto = SyncJobDto.builder()
+        .id(savedIndex.getId())
+        .jobType(ContentType.INDEX_INFO)
+        .jobTime(LocalDateTime.now())
+        .targetDate(savedIndex.getBaseDate())
+        .indexInfoId(savedIndex.getId())
+        .worker("system")
+        .build();
+
+    syncIndexInfoJobDtoList.add(dto);
+  }
+
+  /**
+   * @methodName : createIndex
+   * @date : 2025-03-16 오후 9:17
+   * @author : wongil
+   * @Description: 파싱된 데이터 가지고 Index 객체 생성
+   **/
+  private Index createIndex(JsonNode parsedData) {
+    String indexClassification = parsedData.path("idxCsf").asText();
+    String idxNm = parsedData.path("idxNm").asText();
+    int employedItemsCount = parsedData.path("epyItmsCnt").asInt();
+    String baseDate = parsedData.path("basPntm").asText();
+    String baseIndex = parsedData.path("basIdx").asText();
+    SourceType sourcyType = SourceType.OPEN_API;
+    Boolean favorite = false;
+
+    return new Index(
+        indexClassification,
+        idxNm,
+        employedItemsCount,
+        LocalDate.parse(baseDate, DateTimeFormatter.ofPattern("yyyMMdd")),
+        new BigDecimal(baseIndex),
+        sourcyType, favorite);
+  }
+
+  /**
+   * @methodName : getCallOpenApi
+   * @date : 2025-03-16 오후 2:04
+   * @author : wongil
+   * @Description: 지수 정보를 가져오기 위한 코드 현재 날짜로부터 -3일까지의 데이터만 긁어옴
+   **/
+  private Mono<String> getAllInfosByCallOpenApi(WebClient webClient) {
+
+    return webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .queryParam("serviceKey", API_KEY)
+            .queryParam("resultType", "json")
+            .queryParam("beginBasDt", convertToStringDateFormat(LocalDate.now().minusDays(4))) // 일단 3일로
+            .queryParam("pageNo", 1)
+            .queryParam("numOfRows", 100)
+            .build()
+        )
+        .accept(MediaType.APPLICATION_JSON)
+        .retrieve()
+        .bodyToMono(String.class);
+  }
+
+  /**
+   * @methodName : getSavedIndexDataLinkId
+   * @date : 2025-03-16 오후 2:43
+   * @author : wongil
+   * @Description: 저장된 IndexDataLink의 id값 가져오기
+   **/
   private Long getSavedIndexDataLinkId(SyncJobDto dto) {
-    IndexDataLink savedIndexDataLink = indexDataLinkRepository.findByIndex_IdAndAndTargetDateAndJobTime(dto.getIndexInfoId(),
-        dto.getTargetDate(), dto.getJobTime());;
+    IndexDataLink savedIndexDataLink = indexDataLinkRepository.findByIndex_IdAndAndTargetDateAndJobTime(
+        dto.getIndexInfoId(),
+        dto.getTargetDate(), dto.getJobTime());
+    ;
     return savedIndexDataLink.getId();
   }
 
@@ -225,19 +323,7 @@ public class SyncJobsService {
       IndexDataSyncRequest request,
       Mono<List<Index>> indexListMono, HttpServletRequest httpRequest) {
 
-    return webClient.get()
-        .uri(uriBuilder -> uriBuilder
-            .queryParam("serviceKey", API_KEY)
-            .queryParam("resultType", "json")
-            .queryParam("beginBasDt", convertToStringDateFormat(request.baseDateFrom()))
-            .queryParam("endBasDt", convertToStringDateFormat(request.baseDateTo()))
-            .queryParam("pageNo", 1)
-            .queryParam("numOfRows", 100)
-            .build()
-        )
-        .accept(MediaType.APPLICATION_JSON)
-        .retrieve()
-        .bodyToMono(String.class) // json을 문자열로 바꿈
+    return getBetweenInfoByOpenApi(webClient, request) // json을 문자열로 바꿈
         .flatMapMany(response -> {
 
           JsonNode items = findItems(response);
@@ -253,6 +339,28 @@ public class SyncJobsService {
                 syncFlux);
           });
         });
+  }
+
+  /**
+   * @methodName : getBetweenInfoByOpenApi
+   * @date : 2025-03-16 오후 2:48
+   * @author : wongil
+   * @Description: beginBasDt와 endBasDt 사이의 데이터 뽑기
+   **/
+  private Mono<String> getBetweenInfoByOpenApi(WebClient webClient, IndexDataSyncRequest request) {
+    return webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .queryParam("serviceKey", API_KEY)
+            .queryParam("resultType", "json")
+            .queryParam("beginBasDt", convertToStringDateFormat(request.baseDateFrom()))
+            .queryParam("endBasDt", convertToStringDateFormat(request.baseDateTo()))
+            .queryParam("pageNo", 1)
+            .queryParam("numOfRows", 100)
+            .build()
+        )
+        .accept(MediaType.APPLICATION_JSON)
+        .retrieve()
+        .bodyToMono(String.class);
   }
 
   /**
@@ -429,7 +537,7 @@ public class SyncJobsService {
    * @author : wongil
    * @Description: index 반복적으로 가져오기
    **/
-  private Index getIndex(Iterator<Index> iterator) {
+  private Index createIndex(Iterator<Index> iterator) {
     return iterator.hasNext() ? iterator.next() : null;
   }
 
@@ -491,25 +599,12 @@ public class SyncJobsService {
   private JsonNode findItems(String response) {
     ObjectMapper objectMapper = new ObjectMapper();
 
-    JsonNode jsonNode = null;
-
     try {
-      jsonNode = objectMapper.readTree(response);
+      return objectMapper.readTree(response);
     } catch (JsonProcessingException e) {
+      log.error("Raw API response: {}", response);
       throw new RuntimeException(e);
     }
-
-    /**
-     * API 응답 구조
-     "response": {
-     "header": { ... },
-     "body": {
-     "items": {
-     "item": [ ... ] }
-     }
-     }
-     */
-    return jsonNode;
   }
 
   /**
