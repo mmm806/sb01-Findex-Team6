@@ -12,8 +12,6 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,8 +22,8 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class IndexService {
-  private IndexMapper indexMapper;
-  private IndexRepository indexRepository;
+  private final IndexMapper indexMapper;
+  private final IndexRepository indexRepository;
 
   public ResponseEntity<?> create(IndexInfoCreateRequest indexInfoCreateRequest){
 
