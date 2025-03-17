@@ -15,5 +15,9 @@ public interface IndexValMapper {
   @Mapping(source = "index.indexName", target = "indexName")
   IndexChartDto toDto(IndexVal indexVal); // 차트 조회
 
+  @Mapping(source = "index.id", target = "indexInfoId")
+  @Mapping(source = "index.indexName", target = "indexName")
+  IndexPerformanceDto toPerformanceDto(IndexVal indexVal); // 관심 지수 조회
+
 
 }
