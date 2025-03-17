@@ -59,7 +59,7 @@ public class SyncJobsService {
     List<SyncJobDto> syncIndexInfoJobDtoList = new ArrayList<>();
     WebClient webClient = getWebClient();
 
-    return getSyncJobDtoFlux(webClient, syncIndexInfoJobDtoList);
+    return getSyncInfoJobDtoFlux(webClient, syncIndexInfoJobDtoList);
   }
 
   /**
@@ -74,6 +74,19 @@ public class SyncJobsService {
     WebClient webClient = getWebClient();
 
     Mono<List<Index>> indexListMono = findIndexListMonoByIds(request.indexInfoIds());
+
+    return getSyncDataJobDtoFlux(request, httpRequest, webClient, indexListMono);
+  }
+
+  /**
+  * @methodName : getSyncDataJobDtoFlux
+  * @date : 2025-03-17 오전 9:35
+  * @author : wongil
+  * @Description: Index Data Link 엔티티를 실제로 저장
+   * Mono<List<SyncJobDto> -> Flux
+  **/
+  private Flux<SyncJobDto> getSyncDataJobDtoFlux(IndexDataSyncRequest request,
+      HttpServletRequest httpRequest, WebClient webClient, Mono<List<Index>> indexListMono) {
 
     return getSyncJobDtoMono(webClient, request, indexListMono, httpRequest)
         .flatMapMany(Flux::fromIterable) // Mono<List> -> Flux 스트림으로 변환
@@ -95,24 +108,104 @@ public class SyncJobsService {
    * @author : wongil
    * @Description: 지수 정보를 실제로 저장하고 Flux로 반환
    **/
-  private Flux<SyncJobDto> getSyncJobDtoFlux(WebClient webClient,
+  private Flux<SyncJobDto> getSyncInfoJobDtoFlux(WebClient webClient,
       List<SyncJobDto> syncIndexInfoJobDtoList) {
 
     return getAllInfosByCallOpenApi(webClient)
         .flatMapMany(response -> {
-          JsonNode itemNodes = findItems(response);
-          JsonNode items = parsingData(itemNodes);
+          JsonNode items = getItems(response);
+          List<SyncJobDto> first = saveIndex(syncIndexInfoJobDtoList, items);
 
-          if (items.isArray()) {
-            saveIndexInfo(items, syncIndexInfoJobDtoList);
-          }
+          JsonNode countItems = findItems(response);
+          int numOfRows = getNumOfRows(countItems);
+          int totalPages = getTotalPages(countItems);
 
-          return Flux.fromIterable(syncIndexInfoJobDtoList);
+          Flux<SyncJobDto> syncJobDtoFlux = Flux.fromIterable(syncIndexInfoJobDtoList);
+          return getNextPageSyncInfoJobDtoFlux(syncJobDtoFlux, webClient, syncIndexInfoJobDtoList, numOfRows, totalPages);
+
         })
         .onErrorResume(e -> {
           log.error("Sync job error: {}", e.getMessage(), e);
           return Flux.empty();
         });
+  }
+
+  /**
+  * @methodName : getItems
+  * @date : 2025-03-17 오전 9:56
+  * @author : wongil
+  * @Description: JsonNode에서 item 배열만 가져오기
+  **/
+  private JsonNode getItems(String response) {
+    JsonNode itemNodes = findItems(response);
+
+    return parsingData(itemNodes);
+  }
+
+  /**
+  * @methodName : saveIndex
+  * @date : 2025-03-17 오전 9:54
+  * @author : wongil
+  * @Description: items가 list인 경우 파싱해서 저장
+  **/
+  private List<SyncJobDto> saveIndex(List<SyncJobDto> syncIndexInfoJobDtoList, JsonNode items) {
+    if (items.isArray()) {
+      saveIndexInfo(items, syncIndexInfoJobDtoList);
+    }
+
+    return syncIndexInfoJobDtoList;
+  }
+
+  /**
+  * @methodName : getNextPageSyncInfoJobDtoFlux
+  * @date : 2025-03-17 오전 9:41
+  * @author : wongil
+  * @Description: 페이지의 수가 2개 이상인 경우 계속 돌면서 데이터 가져오기
+  **/
+  private Flux<SyncJobDto> getNextPageSyncInfoJobDtoFlux(Flux<SyncJobDto> syncJobDtoFlux, WebClient webClient, List<SyncJobDto> syncIndexInfoJobDtoList, int numOfRows,
+      int totalPages) {
+
+    if(totalPages > 1) {
+      log.info("Fetching additional pages. Total pages: {}", totalPages);
+
+      log.info("Will fetch from page 2 to page {}", totalPages);
+
+      Flux<SyncJobDto> syncJobIndexInfoDtoFlux = Flux.range(2, totalPages - 1)
+          .doOnNext(pageNumber -> log.info("Processing page number: {}", pageNumber))
+          .flatMap(pageNumber ->
+              fetchInfo(webClient, new ArrayList<>(), pageNumber, numOfRows)
+                  .doOnComplete(() -> log.info("Completed fetching page: {}", pageNumber)));
+
+      return syncJobDtoFlux.concatWith(syncJobIndexInfoDtoFlux);
+    }
+
+    return syncJobDtoFlux;
+  }
+
+  private Flux<SyncJobDto> fetchInfo(WebClient webClient, List<SyncJobDto> syncIndexInfoJobDtoList,
+      Integer pageNumber, int numOfRows) {
+
+    return webClient.get()
+        .uri(uriBuilder -> uriBuilder
+            .queryParam("serviceKey", API_KEY)
+            .queryParam("resultType", "json")
+            .queryParam("beginBasDt", convertToStringDateFormat(LocalDate.now().minusDays(3)))
+            .queryParam("endBasDt", convertToStringDateFormat(LocalDate.now()))
+            .queryParam("pageNo", pageNumber)
+            .queryParam("numOfRows", numOfRows)
+            .build()
+        )
+        .accept(MediaType.APPLICATION_JSON)
+        .retrieve()
+        .bodyToMono(String.class)
+        .flatMapMany(response -> {
+          JsonNode items = getItems(response);
+
+          List<SyncJobDto> savedSyncIndexInfoJobDtoList = saveIndex(syncIndexInfoJobDtoList, items);
+
+          return Flux.fromIterable(savedSyncIndexInfoJobDtoList);
+        });
+
   }
 
   /**
@@ -177,7 +270,7 @@ public class SyncJobsService {
     int employedItemsCount = parsedData.path("epyItmsCnt").asInt();
     String baseDate = parsedData.path("basPntm").asText();
     String baseIndex = parsedData.path("basIdx").asText();
-    SourceType sourcyType = SourceType.OPEN_API;
+    SourceType sourceType = SourceType.OPEN_API;
     Boolean favorite = false;
 
     return new Index(
@@ -186,7 +279,7 @@ public class SyncJobsService {
         employedItemsCount,
         LocalDate.parse(baseDate, DateTimeFormatter.ofPattern("yyyMMdd")),
         new BigDecimal(baseIndex),
-        sourcyType, favorite);
+        sourceType, favorite);
   }
 
   /**
@@ -218,10 +311,11 @@ public class SyncJobsService {
    * @Description: 저장된 IndexDataLink의 id값 가져오기
    **/
   private Long getSavedIndexDataLinkId(SyncJobDto dto) {
+
     IndexDataLink savedIndexDataLink = indexDataLinkRepository.findByIndex_IdAndAndTargetDateAndJobTime(
         dto.getIndexInfoId(),
         dto.getTargetDate(), dto.getJobTime());
-    ;
+
     return savedIndexDataLink.getId();
   }
 
@@ -323,7 +417,7 @@ public class SyncJobsService {
       IndexDataSyncRequest request,
       Mono<List<Index>> indexListMono, HttpServletRequest httpRequest) {
 
-    return getBetweenInfoByOpenApi(webClient, request) // json을 문자열로 바꿈
+    return getBetweenDateInfoByOpenApi(webClient, request) // json을 문자열로 바꿈
         .flatMapMany(response -> {
 
           JsonNode items = findItems(response);
@@ -334,7 +428,7 @@ public class SyncJobsService {
 
             Flux<SyncJobDto> syncFlux = convertToSyncJobDtoFlux(httpRequest, indexList, items);
 
-            return getNextPageSyncJobDtoFlux(webClient, request, httpRequest, indexList, totalPages,
+            return getNextPageSyncDataJobDtoFlux(webClient, request, httpRequest, indexList, totalPages,
                 numOfRows,
                 syncFlux);
           });
@@ -347,7 +441,7 @@ public class SyncJobsService {
    * @author : wongil
    * @Description: beginBasDt와 endBasDt 사이의 데이터 뽑기
    **/
-  private Mono<String> getBetweenInfoByOpenApi(WebClient webClient, IndexDataSyncRequest request) {
+  private Mono<String> getBetweenDateInfoByOpenApi(WebClient webClient, IndexDataSyncRequest request) {
     return webClient.get()
         .uri(uriBuilder -> uriBuilder
             .queryParam("serviceKey", API_KEY)
@@ -369,7 +463,7 @@ public class SyncJobsService {
    * @author : wongil
    * @Description: 데이터의 양이 많아 페이지가 많으면 2페이지부터 totalPages - 1 번까지 반복해서 API 호출해서 데이터 가져오기
    **/
-  private Flux<SyncJobDto> getNextPageSyncJobDtoFlux(WebClient webClient,
+  private Flux<SyncJobDto> getNextPageSyncDataJobDtoFlux(WebClient webClient,
       IndexDataSyncRequest request,
       HttpServletRequest httpRequest, List<Index> indexList, int totalPages, int numOfRows,
       Flux<SyncJobDto> syncFlux) {
@@ -377,7 +471,7 @@ public class SyncJobsService {
     if (totalPages > 1) {
       Flux<SyncJobDto> syncJobDtoFlux = Flux.range(2, totalPages - 1)
           .flatMap(pageNumber ->
-              fetch(webClient, request, indexList, httpRequest, pageNumber, numOfRows));
+              fetchData(webClient, request, indexList, httpRequest, pageNumber, numOfRows));
 
       return syncFlux.concatWith(syncJobDtoFlux);
     }
@@ -406,7 +500,7 @@ public class SyncJobsService {
    * @author : wongil
    * @Description: 나머지 pageNumber와 numberOfRows에 대하여 API 호출해서 데이터 뽑기
    **/
-  private Flux<SyncJobDto> fetch(WebClient webClient, IndexDataSyncRequest request,
+  private Flux<SyncJobDto> fetchData(WebClient webClient, IndexDataSyncRequest request,
       List<Index> indexList, HttpServletRequest httpRequest, int pageNumber, int numOfRows) {
 
     return webClient.get()
