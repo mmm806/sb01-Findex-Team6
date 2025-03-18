@@ -1,8 +1,6 @@
 package com.sprint.findex_team6.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sprint.findex_team6.dto.SyncJobDto;
 import com.sprint.findex_team6.entity.ContentType;
 import com.sprint.findex_team6.entity.Index;
@@ -11,6 +9,7 @@ import com.sprint.findex_team6.entity.SourceType;
 import com.sprint.findex_team6.exception.NotFoundException;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
 import com.sprint.findex_team6.repository.IndexRepository;
+import com.sprint.findex_team6.service.util.SyncJobUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -69,9 +68,12 @@ public class SyncInfoJobsService {
     List<SyncJobDto> syncIndexInfoJobDtoList = new ArrayList<>();
 
     String response = getAllInfosByCallOpenApi();
-    JsonNode items = findItems(response);
+    JsonNode items = SyncJobUtils.findItems(response);
 
-    List<SyncJobDto> mockList = createMockSyncInfoJobResponse(items, request, syncIndexInfoJobDtoList);
+    List<SyncJobDto> mockList = SyncJobUtils.createMockSyncJobResponse(items,
+        request, syncIndexInfoJobDtoList,
+        ContentType.INDEX_INFO);
+
     List<IndexDataLink> indexDataLinks = saveMockDtos(mockList);
 
     schedulerAsyncIndexInfo(indexDataLinks);
@@ -114,10 +116,10 @@ public class SyncInfoJobsService {
     transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
     String response = getAllInfosByCallOpenApi();
-    JsonNode items = findItems(response);
+    JsonNode items = SyncJobUtils.findItems(response);
 
-    int numOfRows = getNumOfRows(items);
-    int totalPages = getTotalPages(items, numOfRows);
+    int numOfRows = SyncJobUtils.getNumOfRows(items);
+    int totalPages = SyncJobUtils.getTotalPages(items);
 
     transactionTemplate.execute(status -> {
       firstPageFetch(response, indexDataLinkIds);
@@ -150,11 +152,11 @@ public class SyncInfoJobsService {
   }
 
   /**
-  * @methodName : getIndexDataLinks
-  * @date : 2025-03-18 오후 1:34
-  * @author : wongil
-  * @Description: IndexDataLink 실제로 저장하고 id 주입
-  **/
+   * @methodName : getIndexDataLinks
+   * @date : 2025-03-18 오후 1:34
+   * @author : wongil
+   * @Description: IndexDataLink 실제로 저장하고 id 주입
+   **/
   private List<IndexDataLink> getIndexDataLinks(List<SyncJobDto> mockDtoList,
       List<IndexDataLink> indexDataLinkList) {
     List<IndexDataLink> indexDataLinks = indexDataLinkRepository.saveAll(indexDataLinkList);
@@ -174,7 +176,7 @@ public class SyncInfoJobsService {
   private List<SyncJobDto> createMockSyncInfoJobResponse(JsonNode items, HttpServletRequest request,
       List<SyncJobDto> syncIndexInfoJobDtoList) {
 
-    int totalCount = getTotalCount(items);
+    int totalCount = SyncJobUtils.getTotalCount(items);
 
     for (long indexInfoId = 1L; indexInfoId <= totalCount; indexInfoId++) {
       SyncJobDto dto = SyncJobDto.builder()
@@ -182,7 +184,7 @@ public class SyncInfoJobsService {
           .jobType(ContentType.INDEX_INFO)
           .indexInfoId(indexInfoId)
           .targetDate(null)
-          .worker(getUserIp(request))
+          .worker(SyncJobUtils.getUserIp(request))
           .jobTime(LocalDateTime.now())
           .result("SUCCESS")
           .build();
@@ -191,16 +193,6 @@ public class SyncInfoJobsService {
     }
 
     return syncIndexInfoJobDtoList;
-  }
-
-  /**
-   * @methodName : getUserIp
-   * @date : 2025-03-18 오전 10:07
-   * @author : wongil
-   * @Description: worker IP 가져오기
-   **/
-  private String getUserIp(HttpServletRequest request) {
-    return request.getRemoteAddr();
   }
 
   /**
@@ -320,7 +312,8 @@ public class SyncInfoJobsService {
     UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(BASE_URL)
         .queryParam("serviceKey", API_KEY)
         .queryParam("resultType", "json")
-        .queryParam("beginBasDt", convertToStringDateFormat(LocalDate.now().minusDays(WHAT_DAYS_FROM)))
+        .queryParam("beginBasDt",
+            convertToStringDateFormat(LocalDate.now().minusDays(WHAT_DAYS_FROM)))
         .queryParam("endBasDt", convertToStringDateFormat(LocalDate.now()))
         .queryParam("pageNo", pageNumber)
         .queryParam("numOfRows", numOfRows);
@@ -364,30 +357,48 @@ public class SyncInfoJobsService {
           .orElseThrow(() -> new RuntimeException("IndexDataLink not found: " + linkId));
       linksToUpdate.add(freshLink);
 
-      Index index = createIndex(item);
-      indexList.add(index);
+      addIndex(item, indexList);
     }
 
-    // 한번에 index 저장
     List<Index> savedIndexes = indexRepository.saveAll(indexList);
 
-    // 지수 연동 데이트 업데이트
+    updateDateSyncIndex(savedIndexes, linksToUpdate);
+
+    indexDataLinkRepository.saveAll(linksToUpdate);
+  }
+
+  /**
+   * @methodName : updateDateSyncIndex
+   * @date : 2025-03-18 오후 3:49
+   * @author : wongil
+   * @Description: 지수 연동 날짜 업데이트
+   **/
+  private void updateDateSyncIndex(List<Index> savedIndexes, List<IndexDataLink> linksToUpdate) {
     for (int i = 0; i < savedIndexes.size(); i++) {
       Index savedIndex = savedIndexes.get(i);
       IndexDataLink link = linksToUpdate.get(i);
 
       link.changeTargetDateAndIndex(savedIndex.getBaseDate(), savedIndex);
     }
-
-    indexDataLinkRepository.saveAll(linksToUpdate);
   }
 
   /**
-  * @methodName : sortJsonNodeList
-  * @date : 2025-03-18 오후 3:25
-  * @author : wongil
-  * @Description: 지수명으로 먼저 정렬하고 같으면 날짜로 정렬
-  **/
+   * @methodName : addIndex
+   * @date : 2025-03-18 오후 3:48
+   * @author : wongil
+   * @Description: Index를 repository에 집어 넣고 list에도 넣음
+   **/
+  private void addIndex(JsonNode item, List<Index> indexList) {
+    Index index = createIndex(item);
+    indexList.add(index);
+  }
+
+  /**
+   * @methodName : sortJsonNodeList
+   * @date : 2025-03-18 오후 3:25
+   * @author : wongil
+   * @Description: 지수명으로 먼저 정렬하고 같으면 날짜로 정렬
+   **/
   private List<JsonNode> sortJsonNodeList(JsonNode items) {
     List<JsonNode> itemList = new ArrayList<>();
     for (JsonNode item : items) {
@@ -396,6 +407,7 @@ public class SyncInfoJobsService {
 
     itemList.sort(Comparator
         .<JsonNode, String>comparing(item -> item.path("idxCsf").asText())
+        .thenComparing(item -> item.path("idxNm").asText())
         .thenComparing(item -> item.path("basPntm").asText())
     );
     return itemList;
@@ -454,73 +466,13 @@ public class SyncInfoJobsService {
    * @Description: api reponse body의 item 배열만 뽑기
    **/
   private JsonNode getItems(String response) {
-    return findItems(response)
+    return SyncJobUtils.findItems(response)
         .path("response")
         .path("body")
         .path("items")
         .path("item");
   }
 
-  /**
-   * @methodName : getTotalPages
-   * @date : 2025-03-17 오후 10:37
-   * @author : wongil
-   * @Description: 총 페이지 수 구하기
-   **/
-  private int getTotalPages(JsonNode items, int numOfRows) {
-    int totalCount = getTotalCount(items);
-
-    if (numOfRows <= 0) {
-      numOfRows = 100;
-    }
-
-    return (int) Math.ceil((double) totalCount / numOfRows);
-  }
-
-  /**
-   * @methodName : getTotalCount
-   * @date : 2025-03-17 오후 10:36
-   * @author : wongil
-   * @Description: API 응답 바디에서 totalCount만 뽑기
-   **/
-  private int getTotalCount(JsonNode items) {
-    return items
-        .path("response")
-        .path("body")
-        .path("totalCount")
-        .asInt();
-  }
-
-  /**
-   * @methodName : getNumOfRows
-   * @date : 2025-03-17 오후 10:32
-   * @author : wongil
-   * @Description: API 응답 바디에서 numOfRows 뽑기
-   **/
-  private int getNumOfRows(JsonNode items) {
-    return items
-        .path("response")
-        .path("body")
-        .path("numOfRows")
-        .asInt();
-  }
-
-  /**
-   * @methodName : findItems
-   * @date : 2025-03-17 오후 10:30
-   * @author : wongil
-   * @Description: API 응답 결과 파싱해서 JsonNode 타입으로 반환
-   **/
-  private JsonNode findItems(String response) {
-    ObjectMapper objectMapper = new ObjectMapper();
-
-    try {
-      return objectMapper.readTree(response);
-    } catch (JsonProcessingException e) {
-      log.error("API response data: {}", response);
-      throw new RuntimeException(e);
-    }
-  }
 
   /**
    * @methodName : getAllInfosByCallOpenApi
@@ -533,7 +485,8 @@ public class SyncInfoJobsService {
     UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(BASE_URL)
         .queryParam("serviceKey", API_KEY)
         .queryParam("resultType", "json")
-        .queryParam("beginBasDt", convertToStringDateFormat(LocalDate.now().minusDays(WHAT_DAYS_FROM)))
+        .queryParam("beginBasDt",
+            convertToStringDateFormat(LocalDate.now().minusDays(WHAT_DAYS_FROM)))
         .queryParam("pageNo", 1)
         .queryParam("numOfRows", 100);
 
