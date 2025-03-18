@@ -11,6 +11,7 @@ import com.sprint.findex_team6.entity.SourceType;
 import com.sprint.findex_team6.exception.NotFoundException;
 import com.sprint.findex_team6.mapper.IndexMapper;
 import com.sprint.findex_team6.repository.IndexRepository;
+import jakarta.transaction.Transactional;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 
 @Service
+@Transactional
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class IndexService {
@@ -39,7 +41,7 @@ public class IndexService {
 
    if(hasNullFields(indexInfoCreateRequest)){
      String checkNullField = checkNullField(indexInfoCreateRequest) + "는 필수입니다.";
-     ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(),HttpStatus.BAD_REQUEST.value(),"잘못된 요청입니다.", "");
+     ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(),HttpStatus.BAD_REQUEST.value(),"잘못된 요청입니다.", checkNullField);
      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
    }
 
