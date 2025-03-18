@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,20 +67,49 @@ public class SyncInfoJobsService {
    **/
   public List<SyncJobDto> syncInfo(HttpServletRequest request) {
 
-    List<SyncJobDto> syncIndexInfoJobDtoList = new ArrayList<>();
-
     String response = getAllInfosByCallOpenApi();
     JsonNode items = SyncJobUtils.findItems(response);
 
-    List<SyncJobDto> mockList = SyncJobUtils.createMockSyncJobResponse(items,
-        request, syncIndexInfoJobDtoList,
-        ContentType.INDEX_INFO);
+    int totalCount = SyncJobUtils.getTotalCount(items);
+    int numOfRows = SyncJobUtils.getNumOfRows(items);
+    int totalPages = SyncJobUtils.getTotalPages(items);
 
-    List<IndexDataLink> indexDataLinks = saveMockDtos(mockList);
+    // index id 값을 얻기 위해 더미로 저장
+    List<Index> indexList = indexRepository.saveAll(createDummyIndex(totalCount));
 
-    schedulerAsyncIndexInfo(indexDataLinks);
+    // 더미 index의 id 값으로 dto 만들고 저장
+    List<SyncJobDto> mockList = createMockSyncInfoJobResponse(indexList, request);
+    saveMockDtos(mockList, indexList);
+
+    schedulerAsyncIndexInfo(indexList, totalPages, numOfRows);
 
     return mockList;
+  }
+
+  /**
+   * @methodName : createDummyIndex
+   * @date : 2025-03-18 오후 4:20
+   * @author : wongil
+   * @Description: 더미 index 객체 생성
+   **/
+  private List<Index> createDummyIndex(int totalCount) {
+    List<Index> dummyList = new ArrayList<>();
+
+    for (int i = 0; i < totalCount; i++) {
+      Index index = new Index(
+          "DUMMY" + i,
+          "DUMMY" + i,
+          0,
+          LocalDate.now(),
+          new BigDecimal(1),
+          SourceType.OPEN_API,
+          false
+      );
+
+      dummyList.add(index);
+    }
+
+    return dummyList;
   }
 
   /**
@@ -87,15 +118,15 @@ public class SyncInfoJobsService {
    * @author : wongil
    * @Description: IndexInfo를 저장할 비동기 스케줄러
    **/
-  private void schedulerAsyncIndexInfo(List<IndexDataLink> indexDataLinks) {
+  private void schedulerAsyncIndexInfo(List<Index> indexList, int totalPages, int numOfRows) {
 
-    List<Long> indexDataLinkIds = indexDataLinks.stream()
-        .map(IndexDataLink::getId)
+    List<Long> indexIds = indexList.stream()
+        .map(Index::getId)
         .toList();
 
     CompletableFuture.runAsync(() -> {
       try {
-        process(indexDataLinkIds);
+        process(indexIds, totalPages, numOfRows);
       } catch (Exception e) {
         log.error("Async error!!", e);
       }
@@ -109,21 +140,19 @@ public class SyncInfoJobsService {
    * @Description: 실제 저장 프로세스
    **/
   @Transactional(readOnly = true)
-  protected void process(List<Long> indexDataLinkIds) {
+  protected void process(List<Long> indexIds, int totalPages, int numOfRows) {
 
     // 트랜잭션을 직접 관리
     TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
     transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
     String response = getAllInfosByCallOpenApi();
-    JsonNode items = SyncJobUtils.findItems(response);
-
-    int numOfRows = SyncJobUtils.getNumOfRows(items);
-    int totalPages = SyncJobUtils.getTotalPages(items);
 
     transactionTemplate.execute(status -> {
-      firstPageFetch(response, indexDataLinkIds);
-      morePagesFetch(totalPages, numOfRows, indexDataLinkIds);
+
+      firstPageFetch(response, indexIds, 0);
+      morePagesFetch(totalPages, numOfRows, indexIds);
+
       return null;
     });
   }
@@ -134,19 +163,31 @@ public class SyncInfoJobsService {
    * @author : wongil
    * @Description: SyncJob Mock을 실제 IndexDataLink Respository에 저장
    **/
-  private List<IndexDataLink> saveMockDtos(List<SyncJobDto> mockDtoList) {
+  private List<IndexDataLink> saveMockDtos(List<SyncJobDto> mockDtoList, List<Index> indexList) {
 
-    List<IndexDataLink> indexDataLinkList = mockDtoList.stream()
-        .map(mock -> new IndexDataLink(
+    Map<Long, Index> indexMap = indexList.stream()
+        .collect(Collectors.toMap(Index::getId, index -> index));
+
+    List<IndexDataLink> indexDataLinkList = new ArrayList<>();
+
+    for (SyncJobDto mock : mockDtoList) {
+
+      // mock의 indexInfoId로 해당 Index 객체 찾기
+      Index index = indexMap.get(mock.getIndexInfoId());
+
+      if (index != null) {
+        IndexDataLink link = new IndexDataLink(
             null,
             mock.getJobType(),
             LocalDate.now(),
             mock.getWorker(),
             mock.getJobTime(),
             isSuccessOrFail(mock.getResult()),
-            null
-        ))
-        .toList();
+            index
+        );
+        indexDataLinkList.add(link);
+      }
+    }
 
     return getIndexDataLinks(mockDtoList, indexDataLinkList);
   }
@@ -159,6 +200,7 @@ public class SyncInfoJobsService {
    **/
   private List<IndexDataLink> getIndexDataLinks(List<SyncJobDto> mockDtoList,
       List<IndexDataLink> indexDataLinkList) {
+
     List<IndexDataLink> indexDataLinks = indexDataLinkRepository.saveAll(indexDataLinkList);
 
     for (int i = 0; i < mockDtoList.size() && i < indexDataLinks.size(); i++) {
@@ -173,81 +215,25 @@ public class SyncInfoJobsService {
    * @author : wongil
    * @Description: IndexInfo 응답을 위한 가짜 응답 생성
    **/
-  private List<SyncJobDto> createMockSyncInfoJobResponse(JsonNode items, HttpServletRequest request,
-      List<SyncJobDto> syncIndexInfoJobDtoList) {
+  private List<SyncJobDto> createMockSyncInfoJobResponse(List<Index> indexList,
+      HttpServletRequest request) {
+    List<SyncJobDto> syncJobDtoList = new ArrayList<>();
 
-    int totalCount = SyncJobUtils.getTotalCount(items);
-
-    for (long indexInfoId = 1L; indexInfoId <= totalCount; indexInfoId++) {
+    for (Index index : indexList) {
       SyncJobDto dto = SyncJobDto.builder()
           .id(null)
           .jobType(ContentType.INDEX_INFO)
-          .indexInfoId(indexInfoId)
-          .targetDate(null)
+          .indexInfoId(index.getId())
+          .targetDate(index.getBaseDate())
           .worker(SyncJobUtils.getUserIp(request))
           .jobTime(LocalDateTime.now())
           .result("SUCCESS")
           .build();
 
-      syncIndexInfoJobDtoList.add(dto);
+      syncJobDtoList.add(dto);
     }
 
-    return syncIndexInfoJobDtoList;
-  }
-
-  /**
-   * @methodName : saveIndexDataLink
-   * @date : 2025-03-17 오후 11:20
-   * @author : wongil
-   * @Description: dto -> IndexDataLink로 변환 후 repository에 저장
-   **/
-  private void saveIndexDataLink(List<SyncJobDto> syncIndexInfoJobDtoList) {
-    for (SyncJobDto dto : syncIndexInfoJobDtoList) {
-      save(dto);
-
-      Long savedId = getSavedIndexDataLinkId(dto);
-
-      if (savedId != null) {
-        dto.setId(savedId);
-      }
-    }
-  }
-
-  /**
-   * @methodName : getSavedIndexDataLinkId
-   * @date : 2025-03-17 오후 11:16
-   * @author : wongil
-   * @Description: 저장된 Index Data Link id 가져오기
-   **/
-  private Long getSavedIndexDataLinkId(SyncJobDto dto) {
-    List<IndexDataLink> indexDataLink = indexDataLinkRepository.findByIndex_IdAndTargetDateAndJobTime(
-        dto.getIndexInfoId(),
-        dto.getTargetDate(), dto.getJobTime());
-
-    return !indexDataLink.isEmpty() ? indexDataLink.get(0).getId() : null;
-  }
-
-  /**
-   * @methodName : save
-   * @date : 2025-03-17 오후 11:03
-   * @author : wongil
-   * @Description: SyncJobDto -> IndexDatLink로 변환 후 repository에 저장
-   **/
-  private void save(SyncJobDto dto) {
-    Boolean result = isSuccessOrFail(dto.getResult());
-    Index index = findIndex(dto.getIndexInfoId());
-
-    IndexDataLink indexDataLink = new IndexDataLink(
-        null,
-        dto.getJobType(),
-        dto.getTargetDate(),
-        dto.getWorker(),
-        dto.getJobTime(),
-        result,
-        index
-    );
-
-    indexDataLinkRepository.save(indexDataLink);
+    return syncJobDtoList;
   }
 
   /**
@@ -278,11 +264,11 @@ public class SyncInfoJobsService {
    * @Description: 2페이지부터 순회하며 데이터 뽑기
    **/
   private void morePagesFetch(int totalPages, int numOfRows,
-      List<Long> indexDataLinkIds) {
+      List<Long> indexIds) {
 
     if (totalPages > 1) {
       for (int pageNumber = 2; pageNumber <= totalPages; pageNumber++) {
-        fetchInfo(indexDataLinkIds, pageNumber, numOfRows);
+        fetchInfo(indexIds, pageNumber, numOfRows);
       }
     }
   }
@@ -293,9 +279,9 @@ public class SyncInfoJobsService {
    * @author : wongil
    * @Description: 1페이지 처리
    **/
-  private void firstPageFetch(String response, List<Long> indexDataLinkIds) {
+  private void firstPageFetch(String response, List<Long> indexDataLinkIds,int offset) {
 
-    saveIndex(getItems(response), indexDataLinkIds, 0);
+    saveIndex(getItems(response), indexDataLinkIds, offset);
   }
 
   /**
@@ -304,7 +290,7 @@ public class SyncInfoJobsService {
    * @author : wongil
    * @Description:
    **/
-  private void fetchInfo(List<Long> indexDataLinkIds, int pageNumber,
+  private void fetchInfo(List<Long> indexIds, int pageNumber,
       int numOfRows) {
 
     int offset = (pageNumber - 1) * numOfRows;
@@ -312,8 +298,7 @@ public class SyncInfoJobsService {
     UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(BASE_URL)
         .queryParam("serviceKey", API_KEY)
         .queryParam("resultType", "json")
-        .queryParam("beginBasDt",
-            convertToStringDateFormat(LocalDate.now().minusDays(WHAT_DAYS_FROM)))
+        .queryParam("beginBasDt", convertToStringDateFormat(LocalDate.now().minusDays(WHAT_DAYS_FROM)))
         .queryParam("endBasDt", convertToStringDateFormat(LocalDate.now()))
         .queryParam("pageNo", pageNumber)
         .queryParam("numOfRows", numOfRows);
@@ -321,7 +306,7 @@ public class SyncInfoJobsService {
     String responseBody = getResponseBody(builder);
     JsonNode items = getItems(responseBody);
 
-    saveIndex(items, indexDataLinkIds, offset);
+    saveIndex(items, indexIds, offset);
   }
 
   /**
@@ -345,52 +330,50 @@ public class SyncInfoJobsService {
   private void saveIndexInfo(JsonNode items, List<Long> indexDataLinkIds, int offset) {
     List<JsonNode> itemList = sortJsonNodeList(items);
 
-    List<Index> indexList = new ArrayList<>();
-    List<IndexDataLink> linksToUpdate = new ArrayList<>();
+    List<IndexDataLink> updateIndexDataLinkList = new ArrayList<>();
 
     // IndexDatRepository에서 id로 찾고, Index 객체 생성 후 리스트에 저장
     for (int i = 0; i < itemList.size() && (offset + i) < indexDataLinkIds.size(); i++) {
       JsonNode item = itemList.get(i);
-      Long linkId = indexDataLinkIds.get(offset + i);
+      Long indexId = indexDataLinkIds.get(offset + i);
 
-      IndexDataLink freshLink = indexDataLinkRepository.findById(linkId)
-          .orElseThrow(() -> new RuntimeException("IndexDataLink not found: " + linkId));
-      linksToUpdate.add(freshLink);
+      Index index = indexRepository.findById(indexId)
+          .orElseThrow(() -> new RuntimeException("Index not found: " + indexId));
 
-      addIndex(item, indexList);
+      // 실제 데이터로 업데이트
+      updateIndex(index, item);
+      indexRepository.save(index);
+
+      // 관련 IndexDataLink 찾기
+      List<IndexDataLink> links = indexDataLinkRepository.findByIndex_Id(indexId);
+      if (!links.isEmpty()) {
+        for (IndexDataLink link : links) {
+          link.changeTargetDateAndIndex(index.getBaseDate(), index);
+          updateIndexDataLinkList.add(link);
+        }
+      }
     }
 
-    List<Index> savedIndexes = indexRepository.saveAll(indexList);
-
-    updateDateSyncIndex(savedIndexes, linksToUpdate);
-
-    indexDataLinkRepository.saveAll(linksToUpdate);
-  }
-
-  /**
-   * @methodName : updateDateSyncIndex
-   * @date : 2025-03-18 오후 3:49
-   * @author : wongil
-   * @Description: 지수 연동 날짜 업데이트
-   **/
-  private void updateDateSyncIndex(List<Index> savedIndexes, List<IndexDataLink> linksToUpdate) {
-    for (int i = 0; i < savedIndexes.size(); i++) {
-      Index savedIndex = savedIndexes.get(i);
-      IndexDataLink link = linksToUpdate.get(i);
-
-      link.changeTargetDateAndIndex(savedIndex.getBaseDate(), savedIndex);
+    if (!updateIndexDataLinkList.isEmpty()) {
+      indexDataLinkRepository.saveAll(updateIndexDataLinkList);
     }
   }
 
   /**
-   * @methodName : addIndex
-   * @date : 2025-03-18 오후 3:48
-   * @author : wongil
-   * @Description: Index를 repository에 집어 넣고 list에도 넣음
-   **/
-  private void addIndex(JsonNode item, List<Index> indexList) {
-    Index index = createIndex(item);
-    indexList.add(index);
+  * @methodName : updateIndex
+  * @date : 2025-03-18 오후 5:12
+  * @author : wongil
+  * @Description: 더미 index를 실제 데이터로 업데이트
+  **/
+  private void updateIndex(Index index, JsonNode item) {
+    String indexClassification = item.path("idxCsf").asText();
+    String idxNm = item.path("idxNm").asText();
+    int employedItemsCount = item.path("epyItmsCnt").asInt();
+    String baseDate = item.path("basPntm").asText();
+    String baseIndex = item.path("basIdx").asText();
+    LocalDate parsedBaseDate = LocalDate.parse(baseDate, DateTimeFormatter.ofPattern("yyyyMMdd"));
+
+    index.updateInfo(indexClassification, idxNm, employedItemsCount, parsedBaseDate, new BigDecimal(baseIndex));
   }
 
   /**
@@ -411,52 +394,6 @@ public class SyncInfoJobsService {
         .thenComparing(item -> item.path("basPntm").asText())
     );
     return itemList;
-  }
-
-  /**
-   * @methodName : createSyncJobDtoList
-   * @date : 2025-03-17 오후 10:47
-   * @author : wongil
-   * @Description: SyncJobDto list에 값 넣기
-   **/
-  private void createSyncJobDtoList(Index savedIndex, List<SyncJobDto> syncIndexInfoJobDtoList) {
-    SyncJobDto dto = SyncJobDto.builder()
-        .id(null)
-        .jobType(ContentType.INDEX_INFO)
-        .jobTime(LocalDateTime.now())
-        .targetDate(savedIndex.getBaseDate())
-        .indexInfoId(savedIndex.getId())
-        .result("SUCCESS")
-        .worker("system")
-        .build();
-
-    syncIndexInfoJobDtoList.add(dto);
-  }
-
-  /**
-   * @methodName : createIndex
-   * @date : 2025-03-17 오후 10:42
-   * @author : wongil
-   * @Description: 실제 Index 생성
-   **/
-  private Index createIndex(JsonNode item) {
-    String indexClassification = item.path("idxCsf").asText();
-    String idxNm = item.path("idxNm").asText();
-    int employedItemsCount = item.path("epyItmsCnt").asInt();
-    String baseDate = item.path("basPntm").asText();
-    String baseIndex = item.path("basIdx").asText();
-    SourceType sourceType = SourceType.OPEN_API;
-    Boolean favorite = false;
-
-    return new Index(
-        indexClassification,
-        idxNm,
-        employedItemsCount,
-        LocalDate.parse(baseDate, DateTimeFormatter.ofPattern("yyyyMMdd")),
-        new BigDecimal(baseIndex),
-        sourceType,
-        favorite
-    );
   }
 
   /**
@@ -529,5 +466,4 @@ public class SyncInfoJobsService {
   private String convertToStringDateFormat(LocalDate localDate) {
     return String.join("", localDate.toString().split("-"));
   }
-
 }

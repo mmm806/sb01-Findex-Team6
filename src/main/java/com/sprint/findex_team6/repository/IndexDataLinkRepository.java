@@ -12,4 +12,7 @@ public interface IndexDataLinkRepository extends JpaRepository<IndexDataLink, Lo
 
   @EntityGraph(attributePaths = {"index"})
   List<IndexDataLink> findByIndex_IdAndTargetDateAndJobTime(Long indexInfoId, LocalDate targetDate, LocalDateTime jobTime);
+
+  @EntityGraph(attributePaths = {"index"})
+  List<IndexDataLink> findByIndex_Id(Long indexId);
 }
