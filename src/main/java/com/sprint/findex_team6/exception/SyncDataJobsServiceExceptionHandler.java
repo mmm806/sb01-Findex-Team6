@@ -20,11 +20,11 @@ public class SyncDataJobsServiceExceptionHandler {
     return new ErrorResponse(LocalDateTime.now(), errorCode.getStatus().value(), errorCode.getMessage(), errorCode.getDetails());
   }
 
-  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-  @ExceptionHandler(Exception.class)
-  public ErrorResponse globalException(Exception e) {
-    SyncJobErrorCode errorCode = SyncJobErrorCode.INTERNAL_SERVER_ERROR;
-
-    return new ErrorResponse(LocalDateTime.now(), errorCode.getStatus().value(), errorCode.getMessage(), errorCode.getDetails());
-  }
+//  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+//  @ExceptionHandler(Exception.class)
+//  public ErrorResponse globalException(Exception e) {
+//    SyncJobErrorCode errorCode = SyncJobErrorCode.INTERNAL_SERVER_ERROR;
+//
+//    return new ErrorResponse(LocalDateTime.now(), errorCode.getStatus().value(), errorCode.getMessage(), errorCode.getDetails());
+//  }
 }
