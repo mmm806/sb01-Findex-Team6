@@ -69,43 +69,91 @@ public class SyncDataJobsService {
     // 우선 지수 정보를 가져와야함
     List<Index> indexList = findAllIndexList(request.indexInfoIds());
 
-    // 지수 정보가 있어야 지수 데이터 연동 가능
     if (indexList == null || indexList.isEmpty()) {
       throw new RuntimeException("지수 정보가 없습니다.");
     }
 
+    // index Repository에서 이름 전부 뽑기
     List<String> indexNames = indexList.stream()
         .map(Index::getIndexName)
+        .distinct()
         .toList();
 
-    // idxNm(index_name)와 일치하는 데이터 가져와야함
-    List<JsonNode> jsonNodeList = getJsonNodeList(request, indexNames);
-    int syncDataCount = getSyncDataCount(jsonNodeList);
+    // 지수 분류명으로 필터링한 Items
+    List<JsonNode> filteredItems = filterItems(indexList,
+        getAllItems(getJsonNodeList(request, indexNames)));
 
-    List<SyncJobDto> dtos = createMockSynDataJob(syncDataCount, httpRequest, syncJobDtoList);
-
-    List<IndexDataLink> indexDataLinks = saveMockDtoToIndexDataLink(dtos, indexList, httpRequest);
+    // 가짜 SyncDto 생성
+    List<SyncJobDto> dtos = createMockSynDataJob(filteredItems.size(), httpRequest, syncJobDtoList);
+    saveMockDtoToIndexDataLink(dtos, indexList, httpRequest);
 
     return dtos;
-    
-
-//    // 지수 정보를 바탕으로 DTO 생성
-//    List<SyncJobDto> dtos = SyncJobUtils.createMockSyncJobResponse(items, httpRequest,
-//        syncJobDtoList,
-//        ContentType.INDEX_DATA);
-//
-//    // 만든 dto가 아직 id가 지정되지 않았음. 이걸 따로 지정해줘야함
-//    List<IndexDataLink> indexDataLinks = saveMockDtoToIndexDataLink(dtos, indexList, httpRequest);
-//
-//    return dtos;
   }
 
   /**
-  * @methodName : createMockSynDataJob
-  * @date : 2025-03-18 오후 8:02
-  * @author : wongil
-  * @Description: syncData 개수만큼 dto 미리 생성
-  **/
+   * @methodName : getAllItems
+   * @date : 2025-03-18 오후 11:43
+   * @author : wongil
+   * @Description: json 응답 바디에 있는 item들 다 가져오기
+   **/
+  private List<JsonNode> getAllItems(List<JsonNode> jsonNodeList) {
+
+    List<JsonNode> allItems = new ArrayList<>();
+
+    for (JsonNode json : jsonNodeList) {
+      JsonNode items = getItem(json);
+      if (items.isArray()) {
+        for (int i = 0; i < items.size(); i++) {
+          allItems.add(items.get(i));
+        }
+      }
+    }
+
+    return allItems;
+  }
+
+  /**
+   * @methodName : filterItems
+   * @date : 2025-03-18 오후 11:44
+   * @author : wongil
+   * @Description: index classification로 필터링
+   **/
+  private List<JsonNode> filterItems(List<Index> indexList, List<JsonNode> allItems) {
+
+    List<JsonNode> pickItems = new ArrayList<>();
+
+    indexList.forEach(index -> {
+      allItems.forEach(item -> {
+        String idxCsf = item.path("idxCsf").asText();
+        if (index.getIndexClassification().equals(idxCsf)) {
+          pickItems.add(item);
+        }
+      });
+    });
+
+    return pickItems;
+  }
+
+  /**
+   * @methodName : getItem
+   * @date : 2025-03-18 오후 9:24
+   * @author : wongil
+   * @Description: json 응답 바디에서 item 배열만 뽑기
+   **/
+  private JsonNode getItem(JsonNode json) {
+    return json
+        .path("response")
+        .path("body")
+        .path("items")
+        .path("item");
+  }
+
+  /**
+   * @methodName : createMockSynDataJob
+   * @date : 2025-03-18 오후 8:02
+   * @author : wongil
+   * @Description: syncData 개수만큼 dto 미리 생성
+   **/
   private List<SyncJobDto> createMockSynDataJob(int syncDataCount, HttpServletRequest httpRequest,
       List<SyncJobDto> syncJobDtoList) {
 
@@ -127,85 +175,35 @@ public class SyncDataJobsService {
   }
 
   /**
-  * @methodName : getSyncDataCount
-  * @date : 2025-03-18 오후 7:56
-  * @author : wongil
-  * @Description: 연동되어야 하는 데이터의 개수 얻기
-  **/
-  private int getSyncDataCount(List<JsonNode> jsonNodeList) {
-    int count = 0;
-    for (JsonNode jsonNode : jsonNodeList) {
-      count += SyncJobUtils.getTotalCount(jsonNode);
-    }
-
-    return count;
-  }
-
-  /**
-  * @methodName : getJsonNodeList
-  * @date : 2025-03-18 오후 7:23
-  * @author : wongil
-  * @Description: JsonNode stream을 JsonNode List로 변환
-  **/
+   * @methodName : getJsonNodeList
+   * @date : 2025-03-18 오후 7:23
+   * @author : wongil
+   * @Description: JsonNode stream을 JsonNode List로 변환
+   **/
   private List<JsonNode> getJsonNodeList(IndexDataSyncRequest request, List<String> indexNames) {
     return getJsonNodeStream(indexNames, request)
         .filter(items -> items != null && !items.isMissingNode())
-        .flatMap(items -> {
-          if (items.isArray()) {
-            List<JsonNode> itemList = new ArrayList<>();
-            items.forEach(itemList::add);
-
-            return itemList.stream();
-          }
-
-          return Stream.of(items);
-        })
         .toList();
   }
 
   /**
-  * @methodName : getJsonNodeStream
-  * @date : 2025-03-18 오후 7:22
-  * @author : wongil
-  * @Description: indexNames로 쿼리해서 JsonNode 얻기
-  **/
-  private Stream<JsonNode> getJsonNodeStream(List<String> indexNames, IndexDataSyncRequest request) {
+   * @methodName : getJsonNodeStream
+   * @date : 2025-03-18 오후 7:22
+   * @author : wongil
+   * @Description: indexNames로 쿼리해서 JsonNode 얻기
+   **/
+  private Stream<JsonNode> getJsonNodeStream(List<String> indexNames,
+      IndexDataSyncRequest request) {
+
     return indexNames.stream()
         .map(indexName -> {
-          String response;
-
-          if (request.indexInfoIds() == null || request.indexInfoIds().isEmpty()) {
-            response = getInfoByBetweenDateOpenApi(request, indexName); // 모든 Index에 대해서 쿼리함
-          } else {
-            response = getInfoByClassificationOpenApi(request, indexName); // 특정 id로 조회된 것만 쿼리
-          }
+          String response = getInfoByBetweenDateOpenApi(request, indexName);
 
           return SyncJobUtils.findItems(response);
+
         });
   }
 
-  /**
-   * @methodName : getInfoByClassificationOpenApi
-   * @date : 2025-03-18 오후 6:24
-   * @author : wongil
-   * @Description: 특정 id로 조회한 index를 찾아, classfication, index name으로 데이터를 찾아 연동해줘야함
-   **/
-  private String getInfoByClassificationOpenApi(IndexDataSyncRequest request, String indexName) {
-
-    String encodedName = encodeName(indexName);
-
-    UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(BASE_URL)
-        .queryParam("serviceKey", API_KEY)
-        .queryParam("resultType", "json")
-        .queryParam("beginBasDt", convertToStringDateFormat(request.baseDateFrom()))
-        .queryParam("endBasDt", convertToStringDateFormat(request.baseDateTo()))
-        .queryParam("pageNo", 1)
-        .queryParam("numOfRows", 100)
-        .queryParam("idxNm", encodedName);
-
-    return getResponseBody(builder);
-
-  }
 
   /**
    * @methodName : saveMockDtoToIndexDataLink
@@ -218,26 +216,27 @@ public class SyncDataJobsService {
 
     List<IndexDataLink> links = new ArrayList<>();
 
-    for (int i = 0; i < dtos.size() && i < indexList.size(); i++) {
-      SyncJobDto dto = dtos.get(i);
-      Index index = indexList.get(i);
+    indexList
+        .forEach(index -> {
+          dtos
+              .forEach(dto -> {
 
-      IndexDataLink indexDataLink = new IndexDataLink(
-          null,
-          ContentType.INDEX_DATA,
-          index.getBaseDate(),
-          getUserIp(request),
-          LocalDateTime.now(),
-          true,
-          index
-      );
+                IndexDataLink indexDataLink = new IndexDataLink(
+                    null,
+                    ContentType.INDEX_DATA,
+                    index.getBaseDate(),
+                    getUserIp(request),
+                    LocalDateTime.now(),
+                    true,
+                    index
+                );
 
-      links.add(indexDataLink);
-    }
+                links.add(indexDataLink);
+              });
+        });
 
     return indexDataLinkRepository.saveAll(links);
   }
-
 
 
   /**
@@ -263,11 +262,11 @@ public class SyncDataJobsService {
   }
 
   /**
-  * @methodName : encodeName
-  * @date : 2025-03-18 오후 7:34
-  * @author : wongil
-  * @Description: 한글 이름만 인코딩
-  **/
+   * @methodName : encodeName
+   * @date : 2025-03-18 오후 7:34
+   * @author : wongil
+   * @Description: 한글 이름만 인코딩
+   **/
   private String encodeName(String indexName) {
     String encodedName = null;
     try {
@@ -318,7 +317,7 @@ public class SyncDataJobsService {
    * @methodName : findIndexListByIds
    * @date : 2025-03-18 오후 2:09
    * @author : wongil
-   * @Description: 사용자가 보낸 List<Integer> indexInfoIds 이걸 받아서 index 찾기
+   * @Description: 사용자가 보낸 List<Integer> indexInfoIds 이걸 받아서 index 찾기 infoIds가 없으면 모든 지수를 검색
    **/
   private List<Index> findAllIndexList(List<Integer> indexInfoIds) {
     if (indexInfoIds == null || indexInfoIds.isEmpty()) {
