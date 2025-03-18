@@ -3,8 +3,9 @@ package com.sprint.findex_team6.controller;
 import com.sprint.findex_team6.dto.SyncJobDto;
 import com.sprint.findex_team6.dto.request.CursorPageRequest;
 import com.sprint.findex_team6.dto.request.IndexDataSyncRequest;
+import com.sprint.findex_team6.service.SyncDataJobsService;
+import com.sprint.findex_team6.service.SyncInfoJobsService;
 import com.sprint.findex_team6.service.SyncJobsSearchService;
-import com.sprint.findex_team6.service.SyncJobsService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,7 @@ import reactor.core.publisher.Flux;
 @RequiredArgsConstructor
 public class SyncJobsController {
 
-  private final SyncJobsService syncJobsService;
+  private final SyncInfoJobsService syncInfoJobsService;
   private final SyncJobsSearchService syncJobsSearchService;
 
   /**
@@ -42,9 +43,9 @@ public class SyncJobsController {
    **/
   @ResponseStatus(HttpStatus.ACCEPTED)
   @PostMapping("/index-infos")
-  public Flux<SyncJobDto> syncInformation() {
+  public List<SyncJobDto> syncInformation(HttpServletRequest request) {
 
-    return syncJobsService.syncInfo();
+    return syncInfoJobsService.syncInfo(request);
   }
 
   /**
@@ -55,10 +56,10 @@ public class SyncJobsController {
    **/
   @ResponseStatus(HttpStatus.ACCEPTED)
   @PostMapping("/index-data")
-  public Flux<SyncJobDto> syncData(@RequestBody @Validated IndexDataSyncRequest request,
+  public List<SyncJobDto> syncData(@RequestBody @Validated IndexDataSyncRequest request,
       HttpServletRequest httpRequest) {
 
-    return syncJobsService.syncData(request, httpRequest);
+    return SyncDataJobsService.syncData(request, httpRequest);
   }
 
 

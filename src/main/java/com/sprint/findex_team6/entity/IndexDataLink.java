@@ -47,4 +47,9 @@ public class IndexDataLink {
   @ManyToOne(fetch = FetchType.LAZY) //하나의 지수 정보는 여러번 연동 작업을 함
   @JoinColumn(name = "index_id")
   private Index index; //연동된 지수 정보
+
+  public void changeTargetDateAndIndex(LocalDate targetDate, Index index) {
+    this.targetDate = targetDate;
+    this.index = index;
+  }
 }
