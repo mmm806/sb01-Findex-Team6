@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import lombok.RequiredArgsConstructor;
@@ -70,7 +71,7 @@ public class SyncInfoJobsService {
     String response = getAllInfosByCallOpenApi();
     JsonNode items = findItems(response);
 
-    List<SyncJobDto> mockList = createMockSyncJobResponse(items, request, syncIndexInfoJobDtoList);
+    List<SyncJobDto> mockList = createMockSyncInfoJobResponse(items, request, syncIndexInfoJobDtoList);
     List<IndexDataLink> indexDataLinks = saveMockDtos(mockList);
 
     schedulerAsyncIndexInfo(indexDataLinks);
@@ -170,7 +171,7 @@ public class SyncInfoJobsService {
    * @author : wongil
    * @Description: IndexInfo 응답을 위한 가짜 응답 생성
    **/
-  private List<SyncJobDto> createMockSyncJobResponse(JsonNode items, HttpServletRequest request,
+  private List<SyncJobDto> createMockSyncInfoJobResponse(JsonNode items, HttpServletRequest request,
       List<SyncJobDto> syncIndexInfoJobDtoList) {
 
     int totalCount = getTotalCount(items);
@@ -302,7 +303,7 @@ public class SyncInfoJobsService {
    **/
   private void firstPageFetch(String response, List<Long> indexDataLinkIds) {
 
-    saveIndex(getItems(response), indexDataLinkIds);
+    saveIndex(getItems(response), indexDataLinkIds, 0);
   }
 
   /**
@@ -313,6 +314,8 @@ public class SyncInfoJobsService {
    **/
   private void fetchInfo(List<Long> indexDataLinkIds, int pageNumber,
       int numOfRows) {
+
+    int offset = (pageNumber - 1) * numOfRows;
 
     UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(BASE_URL)
         .queryParam("serviceKey", API_KEY)
@@ -325,7 +328,7 @@ public class SyncInfoJobsService {
     String responseBody = getResponseBody(builder);
     JsonNode items = getItems(responseBody);
 
-    saveIndex(items, indexDataLinkIds);
+    saveIndex(items, indexDataLinkIds, offset);
   }
 
   /**
@@ -334,9 +337,9 @@ public class SyncInfoJobsService {
    * @author : wongil
    * @Description: items가 배열(item)인 경우에만 배열 내 필드 파싱해서 데이터 저장
    **/
-  private void saveIndex(JsonNode items, List<Long> indexDataLinkIds) {
+  private void saveIndex(JsonNode items, List<Long> indexDataLinkIds, int offset) {
     if (items.isArray()) {
-      saveIndexInfo(items, indexDataLinkIds);
+      saveIndexInfo(items, indexDataLinkIds, offset);
     }
   }
 
@@ -346,23 +349,56 @@ public class SyncInfoJobsService {
    * @author : wongil
    * @Description: items에서 item 꺼내 실제 Index 만들기
    **/
-  private void saveIndexInfo(JsonNode items, List<Long> indexDataLinkIds) {
+  private void saveIndexInfo(JsonNode items, List<Long> indexDataLinkIds, int offset) {
+    List<JsonNode> itemList = sortJsonNodeList(items);
 
-    for (int i = 0; i < indexDataLinkIds.size() && i < items.size(); i++) {
-      JsonNode item = items.get(i);
-      Long linkId = indexDataLinkIds.get(i);
+    List<Index> indexList = new ArrayList<>();
+    List<IndexDataLink> linksToUpdate = new ArrayList<>();
 
-      // dirty checking으로 업데이트 하려고 했는데 비동기라 트랜잭션이 낙관적으로 걸려서 다시 IndexDataLink를 꺼내옴
+    // IndexDatRepository에서 id로 찾고, Index 객체 생성 후 리스트에 저장
+    for (int i = 0; i < itemList.size() && (offset + i) < indexDataLinkIds.size(); i++) {
+      JsonNode item = itemList.get(i);
+      Long linkId = indexDataLinkIds.get(offset + i);
+
       IndexDataLink freshLink = indexDataLinkRepository.findById(linkId)
           .orElseThrow(() -> new RuntimeException("IndexDataLink not found: " + linkId));
+      linksToUpdate.add(freshLink);
 
       Index index = createIndex(item);
-      index = indexRepository.save(index);
-
-      // 그래서 세팅하고 다시 저장
-      freshLink.changeTargetDateAndIndex(index.getBaseDate(), index);
-      indexDataLinkRepository.save(freshLink);
+      indexList.add(index);
     }
+
+    // 한번에 index 저장
+    List<Index> savedIndexes = indexRepository.saveAll(indexList);
+
+    // 지수 연동 데이트 업데이트
+    for (int i = 0; i < savedIndexes.size(); i++) {
+      Index savedIndex = savedIndexes.get(i);
+      IndexDataLink link = linksToUpdate.get(i);
+
+      link.changeTargetDateAndIndex(savedIndex.getBaseDate(), savedIndex);
+    }
+
+    indexDataLinkRepository.saveAll(linksToUpdate);
+  }
+
+  /**
+  * @methodName : sortJsonNodeList
+  * @date : 2025-03-18 오후 3:25
+  * @author : wongil
+  * @Description: 지수명으로 먼저 정렬하고 같으면 날짜로 정렬
+  **/
+  private List<JsonNode> sortJsonNodeList(JsonNode items) {
+    List<JsonNode> itemList = new ArrayList<>();
+    for (JsonNode item : items) {
+      itemList.add(item);
+    }
+
+    itemList.sort(Comparator
+        .<JsonNode, String>comparing(item -> item.path("idxCsf").asText())
+        .thenComparing(item -> item.path("basPntm").asText())
+    );
+    return itemList;
   }
 
   /**
