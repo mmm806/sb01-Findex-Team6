@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Flux;
 
 /**
  * @author : wongil
@@ -33,6 +32,7 @@ import reactor.core.publisher.Flux;
 public class SyncJobsController {
 
   private final SyncInfoJobsService syncInfoJobsService;
+  private final SyncDataJobsService syncDataJobsService;
   private final SyncJobsSearchService syncJobsSearchService;
 
   /**
@@ -59,7 +59,7 @@ public class SyncJobsController {
   public List<SyncJobDto> syncData(@RequestBody @Validated IndexDataSyncRequest request,
       HttpServletRequest httpRequest) {
 
-    return SyncDataJobsService.syncData(request, httpRequest);
+    return syncDataJobsService.syncData(request, httpRequest);
   }
 
 
