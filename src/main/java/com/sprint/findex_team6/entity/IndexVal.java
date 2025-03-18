@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.AccessLevel;
@@ -26,7 +27,9 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Table(name = "index_val")
+@Table(name = "index_val", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"date", "index_id"})
+})
 public class IndexVal {
 
   @Id
