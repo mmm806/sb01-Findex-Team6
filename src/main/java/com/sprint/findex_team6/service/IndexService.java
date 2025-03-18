@@ -1,11 +1,14 @@
 package com.sprint.findex_team6.service;
 
 import com.sprint.findex_team6.dto.IndexInfoDto;
+import com.sprint.findex_team6.dto.IndexInfoSummaryDto;
 import com.sprint.findex_team6.dto.request.IndexInfoCreateRequest;
 import com.sprint.findex_team6.dto.request.IndexInfoUpdateRequest;
+import com.sprint.findex_team6.dto.response.CursorPageResponseIndexInfoDto;
 import com.sprint.findex_team6.dto.response.ErrorResponse;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.SourceType;
+import com.sprint.findex_team6.exception.NotFoundException;
 import com.sprint.findex_team6.mapper.IndexMapper;
 import com.sprint.findex_team6.repository.IndexRepository;
 import jakarta.transaction.Transactional;
@@ -13,11 +16,17 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+
 
 
 @Service
@@ -120,6 +129,43 @@ public class IndexService {
     }
 
     return null;
+  }
+
+  public IndexInfoDto getIndexInfoById(Long id) {
+    Index index = indexRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException("조회한 지수 정보를 찾을 수 없습니다."));
+    return indexMapper.toDto((index));
+  }
+
+
+  public CursorPageResponseIndexInfoDto<IndexInfoDto> getIndexInfos(
+          String indexClassification, String indexName, Boolean favorite, String sortField, String sortDirection,
+          Long idAfter, Pageable pageable) {
+
+    Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortField);
+    pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
+    List<Index> indexList = (idAfter == null)
+            ? indexRepository.findAll(pageable).getContent()
+            : indexRepository.findByIdGreaterThan(idAfter, pageable);
+
+    List<IndexInfoDto> indexDtos = indexList.stream()
+            .map(indexMapper::toDto)
+            .toList();
+
+    return new CursorPageResponseIndexInfoDto<>(
+            indexDtos,
+            indexDtos.isEmpty() ? null : String.valueOf(indexDtos.get(indexDtos.size() - 1).id()),
+            indexDtos.isEmpty() ? null : indexDtos.get(indexDtos.size() - 1).id(),
+            pageable.getPageSize(),
+            indexRepository.count(),
+            !indexDtos.isEmpty()
+    );
+  }
+
+
+  public List<IndexInfoSummaryDto> getIndexSummaries() {
+    return indexRepository.findAllProjectBy();
   }
 
 }
