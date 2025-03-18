@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 public record ChartDataPoint (
-    LocalDate date,
-    BigDecimal closePrice
+    LocalDate baseDate,
+    BigDecimal closingPrice
 ){ //차트 데이터 포인트
 
 }

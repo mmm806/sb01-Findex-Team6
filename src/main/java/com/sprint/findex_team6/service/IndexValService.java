@@ -1,95 +1,68 @@
 package com.sprint.findex_team6.service;
 
+import com.sprint.findex_team6.dto.dashboard.ChartDataPoint;
 import com.sprint.findex_team6.dto.dashboard.IndexChartDto;
-import com.sprint.findex_team6.dto.dashboard.IndexPerformanceDto;
-import com.sprint.findex_team6.dto.dashboard.IndexValCsvDto;
-import com.sprint.findex_team6.dto.dashboard.RankedIndexPerformanceDto;
 import com.sprint.findex_team6.entity.IndexVal;
 import com.sprint.findex_team6.entity.PeriodType;
+import com.sprint.findex_team6.mapper.IndexChartMapper;
 import com.sprint.findex_team6.repository.IndexValRepository;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintWriter;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class IndexValService {
+
   private final IndexValRepository indexValRepository;
+  private final IndexChartMapper indexChartMapper;
 
-  public IndexChartDto getChartData(Long id, PeriodType periodType){
-    List<IndexVal> indexValList = indexValRepository.findByIndex_Id(id,periodType);
-    return new IndexChartDto();
-  }
-  public List<IndexPerformanceDto> getFavoriteIndexPerformance(PeriodType periodType) {
-    List<IndexVal> favoriteIndexes = indexValRepository.findByPeriodType(periodType);
-    return favoriteIndexes.stream().map(indexVal -> new IndexPerformanceDto(
-            indexVal.getIndex().getId(),
-            indexVal.getIndex().getIndexClassification(),
-            indexVal.getIndex().getIndexName(),
-            indexVal.getVersus(),
-            indexVal.getFluctuationRate(),
-            indexVal.getClosePrice(),
-            indexVal.getMarketPrice()
-        ))
-        .collect(Collectors.toList());
-  }
-  public List<RankedIndexPerformanceDto> getRankedIndexPerformance(Long indexInfoId, PeriodType periodType, int limit) {
-    List<IndexPerformanceDto> performances = getFavoriteIndexPerformance(periodType);
-    return performances.stream()
-        .sorted((p1,p2) -> p2.versus().compareTo(p1.versus()))
-        .limit(limit)
-        .map(performance -> new RankedIndexPerformanceDto(performance, performances.indexOf(performance) + 1))
-        .collect(Collectors.toList());
+  //차트조히
+  public IndexChartDto getIndexChart(Long indexInfoId, PeriodType periodType) {
+    LocalDate endDate = LocalDate.now();
+    LocalDate startDate = calculateStartDate(periodType, endDate);
+
+    List<IndexVal> indexVals = indexValRepository.findByIndexIdandDateRange(indexInfoId, startDate, endDate);
+
+    // 이동 평균선 계산
+    List<ChartDataPoint> ma5 = calculateMovingAverage(indexVals, 5);
+    List<ChartDataPoint> ma20 = calculateMovingAverage(indexVals, 20);
+
+    // 데이터 변환 (MapStruct 사용)
+    List<ChartDataPoint> dataPoints = indexVals.stream()
+        .map(val -> new ChartDataPoint(val.getBaseDate(), val.getClosingPrice()))
+        .toList();
+
+    return indexChartMapper.toDto(indexVals.get(0).getIndex(), periodType, dataPoints, ma5, ma20);
   }
 
-  public ByteArrayResource exportCsv(Long indexId, LocalDate startDate, LocalDate endDate, String sortField, String sortDirection ) {
-    List<IndexVal> indexVals = indexValRepository.findIndexDataForCsv(indexId, startDate, endDate, sortField);
-    List<IndexValCsvDto> csvDtos = indexVals.stream()
-        .map(iv -> new IndexValCsvDto(
-            iv.getDate(),
-            iv.getMarketPrice(),
-            iv.getClosePrice(),
-            iv.getHighPrice(),
-            iv.getLowPrice(),
-            iv.getVersus(),
-            iv.getFluctuationRate(),
-            iv.getTradingQuantity(),
-            iv.getTradingPrice(),
-            iv.getMarketTotalCount()
-        )).collect(Collectors.toList());
+  private LocalDate calculateStartDate(PeriodType periodType, LocalDate endDate) {
+    return switch (periodType) {
+      case DAILY -> endDate.minusDays(30);
+      case WEEKLY -> endDate.minusWeeks(12);
+      case MONTHLY -> endDate.minusMonths(12);
+      case QUARTERLY -> endDate.minusMonths(36);
+      case YEARLY -> endDate.minusYears(5);
+    };
+  }
 
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    PrintWriter writer = new PrintWriter(outputStream);
-
-    //csv header
-    writer.println("baseDate, marketPrice, closePrice, highPrice, lowPrice, versus, fluctuationRate, tradingQuantity, tradingPrice, marketTotalAmount");
-
-    //csv add
-    for (IndexValCsvDto data : csvDtos) {
-      writer.printf("%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f%n",
-          data.baseDate(),
-          data.marketPrice(),
-          data.closePrice(),
-          data.highPrice(),
-          data.lowprice(),
-          data.versus(),
-          data.fluctuationRate(),
-          data.tradingQuantity(),
-          data.tradingPrice(),
-          data.marketTotalAmount()
-      );
+  private List<ChartDataPoint> calculateMovingAverage(List<IndexVal> data, int days) {
+    List<ChartDataPoint> result = new ArrayList<>();
+    for (int i = days - 1; i < data.size(); i++) {
+      BigDecimal sum = BigDecimal.ZERO;
+      for (int j = i - days + 1; j <= i; j++) {
+        sum = sum.add(data.get(j).getClosingPrice());
+      }
+      BigDecimal average = sum.divide(BigDecimal.valueOf(days), RoundingMode.HALF_UP);
+      result.add(new ChartDataPoint(data.get(i).getBaseDate(), average));
     }
-
-    writer.flush();
-    writer.close();
-
-    return new ByteArrayResource(outputStream.toByteArray());
+    return result;
   }
-
-
 }
+
+
+

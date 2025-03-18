@@ -24,12 +24,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class IndexValController {
   private final IndexValService indexValService;
 
-  @GetMapping("/{id}/chart") //차트 조회
-  public IndexChartDto getChart(@PathVariable Long id, @RequestParam(defaultValue = "DAILY")
-      PeriodType periodType) {
-    return indexValService.getChartData(id, periodType);
+  @GetMapping("/{id}/chart")
+  public ResponseEntity<IndexChartDto> getChart(@PathVariable Long id, @RequestParam(defaultValue = "DAILY") PeriodType periodType) {
+
+    return ResponseEntity.ok(indexValService.getIndexChart(id, periodType));
   }
-  @GetMapping("/performance/favorite") //관심지수 조회
+
+  /*@GetMapping("/performance/favorite") //관심지수 조회
   public List<IndexPerformanceDto> getFavoritePerformance(@RequestParam(defaultValue = "DAILY") PeriodType periodType) {
     return indexValService.getFavoriteIndexPerformance(periodType);
   }
@@ -55,7 +56,6 @@ public class IndexValController {
         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=index_data.csv")
         .contentType(MediaType.parseMediaType("text/csv"))
         .body(csvFile);
-  }
-
+  }*/
 
 }

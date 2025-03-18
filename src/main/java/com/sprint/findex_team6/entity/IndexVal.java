@@ -25,13 +25,13 @@ public class IndexVal {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  private LocalDate date;         // 기준 일자
+  private LocalDate baseDate;         // 기준 일자
 
   @Enumerated(EnumType.STRING)
   private SourceType sourceType;      // 소스 타입
 
   private BigDecimal marketPrice; // 시가
-  private BigDecimal closePrice; // 종가
+  private BigDecimal closingPrice; // 종가
   private BigDecimal highPrice; // 고가
   private BigDecimal lowPrice;  // 저가
   private BigDecimal versus;       // 대비
