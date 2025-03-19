@@ -51,7 +51,7 @@ public class SyncInfoJobsService {
   private final PlatformTransactionManager transactionManager;
   private final RestTemplate restTemplate;
 
-  private final int WHAT_DAYS_FROM = 3;
+  private final int WHAT_DAYS_FROM = 1;
 
   @Value("${api.stock.url}")
   private String BASE_URL;
@@ -360,11 +360,11 @@ public class SyncInfoJobsService {
   }
 
   /**
-  * @methodName : updateIndex
-  * @date : 2025-03-18 오후 5:12
-  * @author : wongil
-  * @Description: 더미 index를 실제 데이터로 업데이트
-  **/
+   * @methodName : updateIndex
+   * @date : 2025-03-18 오후 5:12
+   * @author : wongil
+   * @Description: 더미 index를 실제 데이터로 업데이트
+   **/
   private void updateIndex(Index index, JsonNode item) {
     String indexClassification = item.path("idxCsf").asText();
     String idxNm = item.path("idxNm").asText();
