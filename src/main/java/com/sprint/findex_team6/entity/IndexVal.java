@@ -37,7 +37,7 @@ public class IndexVal {
   private Long id;
 
   @Column(name = "date")
-  private LocalDate date;         // 기준 일자
+  private LocalDate baseDate;         // 기준 일자
 
   @Enumerated(EnumType.STRING)
   @Column(name = "source_type", columnDefinition = "source_type")
@@ -48,7 +48,7 @@ public class IndexVal {
   private BigDecimal marketPrice; // 시가
 
   @Column(name = "close_price")
-  private BigDecimal closePrice; // 종가
+  private BigDecimal closingPrice; // 종가
 
   @Column(name = "high_price")
   private BigDecimal highPrice; // 고가
@@ -77,10 +77,10 @@ public class IndexVal {
 
   @Builder
   public IndexVal(
-      LocalDate date,
+      LocalDate baseDate,
       SourceType sourceType,
       BigDecimal marketPrice,
-      BigDecimal closePrice,
+      BigDecimal closingPrice,
       BigDecimal highPrice,
       BigDecimal lowPrice,
       BigDecimal versus,
@@ -90,10 +90,10 @@ public class IndexVal {
       BigDecimal marketTotalCount,
       Index index
   ) {
-    this.date = date;
+    this.baseDate = baseDate;
     this.sourceType = sourceType;
     this.marketPrice = marketPrice;
-    this.closePrice = closePrice;
+    this.closingPrice = closingPrice;
     this.highPrice = highPrice;
     this.lowPrice = lowPrice;
     this.versus = versus;

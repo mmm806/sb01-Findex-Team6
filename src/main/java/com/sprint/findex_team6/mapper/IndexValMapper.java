@@ -11,8 +11,6 @@ import org.mapstruct.Named;
 @Named("IndexValMapper")
 public interface IndexValMapper {
 
-  @Mapping(source = "closePrice" , target = "closingPrice")
-  @Mapping(source = "date", target = "baseDate")
   @Mapping(source = "index", target = "indexInfoId" , qualifiedByName = "indexInfoIdByIndex")
   @Mapping(source = "tradingPrice" , target = "tradingPrice", qualifiedByName = "decimalToLong")
   @Mapping(source = "marketTotalCount", target = "marketTotalAmount", qualifiedByName = "decimalToLong")
