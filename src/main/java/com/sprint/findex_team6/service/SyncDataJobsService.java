@@ -8,6 +8,7 @@ import com.sprint.findex_team6.dto.request.IndexDataSyncRequest;
 import com.sprint.findex_team6.entity.ContentType;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexDataLink;
+import com.sprint.findex_team6.entity.IndexVal;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
 import com.sprint.findex_team6.repository.IndexRepository;
 import com.sprint.findex_team6.repository.IndexValRepository;
@@ -15,6 +16,7 @@ import com.sprint.findex_team6.service.util.SyncJobUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.time.LocalDate;
@@ -34,6 +36,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -66,28 +70,139 @@ public class SyncDataJobsService {
 
     List<SyncJobDto> syncJobDtoList = new ArrayList<>();
 
-    // 우선 지수 정보를 가져와야함
-    List<Index> indexList = findAllIndexList(request.indexInfoIds());
+    List<Index> indexList = getIndexList(request);
 
+    MultiValueMap<String, JsonNode> filteredItems = getFilteredItemMultiValueMap(request, indexList);
+
+    return createDummyResponse(httpRequest, indexList, syncJobDtoList, filteredItems);
+  }
+
+  /**
+  * @methodName : getIndexList
+  * @date : 2025-03-19 오전 10:33
+  * @author : wongil
+  * @Description: indexInfoIds 조건에 따라 indexList 가져오기
+  **/
+  private List<Index> getIndexList(IndexDataSyncRequest request) {
+
+    List<Index> indexList = findAllIndexList(request.indexInfoIds());
     if (indexList == null || indexList.isEmpty()) {
       throw new RuntimeException("지수 정보가 없습니다.");
     }
 
-    // index Repository에서 이름 전부 뽑기
+    return indexList;
+  }
+
+  /**
+  * @methodName : getFilteredItemMultiValueMap
+  * @date : 2025-03-19 오전 10:22
+  * @author : wongil
+  * @Description: {"지수 분류명-지수 이름", jsonNode}로 이루어진 MultiValueMap 생서
+  **/
+  private MultiValueMap<String, JsonNode> getFilteredItemMultiValueMap(
+      IndexDataSyncRequest request, List<Index> indexList) {
+
     List<String> indexNames = indexList.stream()
         .map(Index::getIndexName)
         .distinct()
         .toList();
-
-    // 지수 분류명으로 필터링한 Items
-    List<JsonNode> filteredItems = filterItems(indexList,
+    
+    return filterItems(indexList,
         getAllItems(getJsonNodeList(request, indexNames)));
+  }
 
-    // 가짜 SyncDto 생성
-    List<SyncJobDto> dtos = createMockSynDataJob(filteredItems.size(), httpRequest, syncJobDtoList);
-    saveMockDtoToIndexDataLink(dtos, indexList, httpRequest);
+  /**
+  * @methodName : createDummyResponse
+  * @date : 2025-03-19 오전 10:20
+  * @author : wongil
+  * @Description: 클라이언트에게 dto를 먼저 보내기 위한 메서드
+  **/
+  private List<SyncJobDto> createDummyResponse(HttpServletRequest httpRequest, List<Index> indexList,
+      List<SyncJobDto> syncJobDtoList, MultiValueMap<String, JsonNode> filteredItems) {
 
-    return dtos;
+    return indexList.stream()
+        .flatMap(index -> {
+
+          syncJobDtoList.clear();
+
+          List<JsonNode> items = filteredItems.get(getCsfName(index));
+          int size = items.size();
+
+          List<SyncJobDto> dtos = createMockSynDataJob(size, httpRequest, syncJobDtoList);
+          List<IndexDataLink> indexDataLinks = saveMockDtoToIndexDataLink(dtos, index, httpRequest);
+
+          // 빈껍데기 IndexVal 객체 생성
+          saveDummyIndexVal(size, index);
+
+          setDummyResponseId(index, indexDataLinks, dtos);
+
+          return dtos.stream();
+        })
+        .toList();
+  }
+
+
+  /**
+  * @methodName : saveDummyIndexVal
+  * @date : 2025-03-19 오전 10:38
+  * @author : wongil
+  * @Description: 빈 껍데기 IndexVal 생성
+  **/
+  private List<IndexVal> saveDummyIndexVal(int size, Index index) {
+
+    List<IndexVal> indexVals = new ArrayList<>();
+
+    for (int i = 0; i < size; i++) {
+      IndexVal indexVal = new IndexVal(
+          index.getBaseDate(),
+          index.getSourceType(),
+          BigDecimal.ZERO,
+          BigDecimal.ZERO,
+          BigDecimal.ZERO,
+          BigDecimal.ZERO,
+          BigDecimal.ZERO,
+          BigDecimal.ZERO,
+          0L,
+          BigDecimal.ZERO,
+          BigDecimal.ZERO,
+          index
+      );
+
+      indexVals.add(indexVal);
+    }
+
+    indexValRepository.saveAll(indexVals);
+
+    return indexVals;
+  }
+
+  /**
+  * @methodName : setDummyResponseId
+  * @date : 2025-03-19 오전 10:30
+  * @author : wongil
+  * @Description: dummy response와 IndexDataLink id 엮기
+  **/
+  private void setDummyResponseId(Index index, List<IndexDataLink> indexDataLinks, List<SyncJobDto> dtos) {
+
+    indexDataLinks
+        .forEach(link -> {
+          dtos
+              .forEach(dto -> {
+                dto.setId(link.getId());
+                dto.setIndexInfoId(index.getId());
+              });
+        });
+  }
+
+  /**
+  * @methodName : getCsfName
+  * @date : 2025-03-19 오전 10:19
+  * @author : wongil
+  * @Description: "KOSDAQ시리즈-IT 서비스"로 변환
+  **/
+  private String getCsfName(Index index) {
+
+    return String.join("-", index.getIndexClassification(), index.getIndexName());
   }
 
   /**
@@ -118,15 +233,18 @@ public class SyncDataJobsService {
    * @author : wongil
    * @Description: index classification로 필터링
    **/
-  private List<JsonNode> filterItems(List<Index> indexList, List<JsonNode> allItems) {
+  private MultiValueMap<String, JsonNode> filterItems(List<Index> indexList, List<JsonNode> allItems) {
 
-    List<JsonNode> pickItems = new ArrayList<>();
+    MultiValueMap<String, JsonNode> pickItems = new LinkedMultiValueMap<>();
 
     indexList.forEach(index -> {
       allItems.forEach(item -> {
+
         String idxCsf = item.path("idxCsf").asText();
-        if (index.getIndexClassification().equals(idxCsf)) {
-          pickItems.add(item);
+        String idxNm = item.path("idxNm").asText();
+
+        if (index.getIndexClassification().equals(idxCsf) && index.getIndexName().equals(idxNm)) {
+          pickItems.add(String.join("-", idxCsf, idxNm), item);
         }
       });
     });
@@ -212,27 +330,24 @@ public class SyncDataJobsService {
    * @Description: dto와 index로 indexDataLink 객체 생성
    **/
   private List<IndexDataLink> saveMockDtoToIndexDataLink(List<SyncJobDto> dtos,
-      List<Index> indexList, HttpServletRequest request) {
+      Index index, HttpServletRequest request) {
 
     List<IndexDataLink> links = new ArrayList<>();
 
-    indexList
-        .forEach(index -> {
-          dtos
-              .forEach(dto -> {
+    dtos
+        .forEach(dto -> {
 
-                IndexDataLink indexDataLink = new IndexDataLink(
-                    null,
-                    ContentType.INDEX_DATA,
-                    index.getBaseDate(),
-                    getUserIp(request),
-                    LocalDateTime.now(),
-                    true,
-                    index
-                );
+          IndexDataLink indexDataLink = new IndexDataLink(
+              null,
+              ContentType.INDEX_DATA,
+              index.getBaseDate(),
+              getUserIp(request),
+              LocalDateTime.now(),
+              true,
+              index
+          );
 
-                links.add(indexDataLink);
-              });
+          links.add(indexDataLink);
         });
 
     return indexDataLinkRepository.saveAll(links);

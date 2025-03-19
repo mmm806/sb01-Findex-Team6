@@ -15,7 +15,10 @@ public class SyncJobDto{
   Long id;
 
   ContentType jobType;
+
+  @Setter
   Long indexInfoId;
+
   LocalDate targetDate;
   String worker;
   LocalDateTime jobTime;
