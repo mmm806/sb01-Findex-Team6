@@ -21,9 +21,14 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -69,12 +74,106 @@ public class SyncDataJobsService {
   public List<SyncJobDto> syncData(IndexDataSyncRequest request, HttpServletRequest httpRequest) {
 
     List<SyncJobDto> syncJobDtoList = new ArrayList<>();
-
     List<Index> indexList = getIndexList(request);
 
-    MultiValueMap<String, JsonNode> filteredItems = getFilteredItemMultiValueMap(request, indexList);
+    List<JsonNode> items = getItems(request, indexList);
 
-    return createDummyResponse(httpRequest, indexList, syncJobDtoList, filteredItems);
+    MultiValueMap<String, JsonNode> filteredItems = getFilteredItemMultiValueMap(request, indexList);
+    List<SyncJobDto> dummyResponse = createDummyResponse(httpRequest, indexList, syncJobDtoList,
+        filteredItems);
+
+    // 비동기로 데이터 갱신
+    schedulerAsyncIndexData(indexList, dummyResponse, items);
+
+    return dummyResponse;
+  }
+
+  private List<JsonNode> getItems(IndexDataSyncRequest request, List<Index> indexList) {
+    List<String> names = indexList.stream()
+        .map(Index::getIndexName)
+        .toList();
+    return getJsonNodeList(request, names);
+  }
+
+  /**
+  * @methodName : schedulerAsyncIndexData
+  * @date : 2025-03-19 오후 1:42
+  * @author : wongil
+  * @Description: 비동기 작업을 위한 스케줄러
+  **/
+  private void schedulerAsyncIndexData(List<Index> indexList, List<SyncJobDto> jobDtoList, List<JsonNode> items) {
+
+    CompletableFuture.runAsync(() -> {
+      try {
+        process(indexList, jobDtoList, items);
+      } catch (Exception e) {
+        log.error("Async error!!", e);
+      }
+    });
+  }
+
+  /**
+  * @methodName : process
+  * @date : 2025-03-19 오후 1:42
+  * @author : wongil
+  * @Description: 실제 비동기 작업
+  **/
+  private void process(List<Index> indexList, List<SyncJobDto> jobDtoList, List<JsonNode> items) {
+    List<IndexVal> indexVals = findIndexValListByIndexIdAndTargetDate(indexList, jobDtoList);
+
+    List<JsonNode> filteredItems = filterItemsByClassificationName(indexList, getAllItems(items));
+
+    for (int i = 0; i < indexVals.size() && i < filteredItems.size(); i++) {
+      IndexVal indexVal = indexVals.get(i);
+      Long mkp = filteredItems.get(i).path("mkp").asLong(); // 시가
+      Long clpr = filteredItems.get(i).path("clpr").asLong();// 종가
+      Long hipr = filteredItems.get(i).path("hipr").asLong();// 고가
+      Long lopr = filteredItems.get(i).path("lopr").asLong();// 저가
+      Long vs = filteredItems.get(i).path("vs").asLong();// 대비
+      Long fltRt = filteredItems.get(i).path("fltRt").asLong();// 등락률
+      Long trqu = filteredItems.get(i).path("trqu").asLong();// 거래량
+      Long trPrc = filteredItems.get(i).path("trPrc").asLong();// 거래대금
+      Long lstgMrktTotAmt = filteredItems.get(i).path("lstgMrktTotAmt").asLong();// 상장시가총액
+
+      IndexVal changedIndexVal = indexVal.changeData(mkp, clpr, hipr, lopr, vs, fltRt, trqu, trPrc,
+          lstgMrktTotAmt);
+
+      indexValRepository.save(changedIndexVal);
+    }
+
+  }
+
+  /**
+  * @methodName : filterItemsByClassificationName
+  * @date : 2025-03-19 오후 2:25
+  * @author : wongil
+  * @Description: 지수 분류명으로 특정 item만 필터링
+  **/
+  private List<JsonNode> filterItemsByClassificationName(List<Index> indexList, List<JsonNode> allItems) {
+    return indexList.stream()
+        .flatMap(index ->
+            allItems.stream()
+                .filter(item -> item.path("idxCsf").asText().equals(index.getIndexClassification()))
+        )
+        .toList();
+  }
+
+  /**
+  * @methodName : findIndexValListByIndexIdAndTargetDate
+  * @date : 2025-03-19 오후 2:11
+  * @author : wongil
+  * @Description: index.id와 targetDate로 해당하는 IndexVal 찾기
+  **/
+  private List<IndexVal> findIndexValListByIndexIdAndTargetDate(List<Index> indexList, List<SyncJobDto> jobDtoList) {
+    return indexList.stream()
+        .flatMap(index ->
+            jobDtoList
+                .stream()
+                .flatMap(dto ->
+                    indexValRepository.findAllByIndex_IdAndDate(index.getId(), dto.getTargetDate())
+                        .stream())
+        )
+        .toList();
   }
 
   /**
@@ -97,7 +196,7 @@ public class SyncDataJobsService {
   * @methodName : getFilteredItemMultiValueMap
   * @date : 2025-03-19 오전 10:22
   * @author : wongil
-  * @Description: {"지수 분류명-지수 이름", jsonNode}로 이루어진 MultiValueMap 생서
+  * @Description: {"지수 분류명-지수 이름", jsonNode}로 이루어진 MultiValueMap 생성
   **/
   private MultiValueMap<String, JsonNode> getFilteredItemMultiValueMap(
       IndexDataSyncRequest request, List<Index> indexList) {
@@ -128,11 +227,18 @@ public class SyncDataJobsService {
           List<JsonNode> items = filteredItems.get(getCsfName(index));
           int size = items.size();
 
-          List<SyncJobDto> dtos = createMockSynDataJob(size, httpRequest, syncJobDtoList);
+          List<String> baseDateList = items.stream()
+              .map(item -> item.path("basDt").asText())
+              .toList();
+
+          System.out.println("size = " + size);
+          System.out.println("baseDateList = " + baseDateList);
+
+          List<SyncJobDto> dtos = createMockSynDataJob(size, httpRequest, syncJobDtoList, baseDateList);
           List<IndexDataLink> indexDataLinks = saveMockDtoToIndexDataLink(dtos, index, httpRequest);
 
           // 빈껍데기 IndexVal 객체 생성
-          saveDummyIndexVal(size, index);
+          saveDummyIndexVal(size, indexDataLinks, index);
 
           setDummyResponseId(index, indexDataLinks, dtos);
 
@@ -148,13 +254,13 @@ public class SyncDataJobsService {
   * @author : wongil
   * @Description: 빈 껍데기 IndexVal 생성
   **/
-  private List<IndexVal> saveDummyIndexVal(int size, Index index) {
+  private List<IndexVal> saveDummyIndexVal(int size, List<IndexDataLink> indexDataLinks, Index index) {
 
     List<IndexVal> indexVals = new ArrayList<>();
 
     for (int i = 0; i < size; i++) {
       IndexVal indexVal = new IndexVal(
-          index.getBaseDate(),
+          indexDataLinks.get(i).getTargetDate(),
           index.getSourceType(),
           BigDecimal.ZERO,
           BigDecimal.ZERO,
@@ -209,17 +315,18 @@ public class SyncDataJobsService {
    * @methodName : getAllItems
    * @date : 2025-03-18 오후 11:43
    * @author : wongil
-   * @Description: json 응답 바디에 있는 item들 다 가져오기
+   * @Description: json 응답 바디에 있는 모든 item 다 가져오기
    **/
   private List<JsonNode> getAllItems(List<JsonNode> jsonNodeList) {
 
     List<JsonNode> allItems = new ArrayList<>();
 
     for (JsonNode json : jsonNodeList) {
-      JsonNode items = getItem(json);
-      if (items.isArray()) {
-        for (int i = 0; i < items.size(); i++) {
-          allItems.add(items.get(i));
+      JsonNode item = getItem(json);
+
+      if (item.isArray()) {
+        for (int i = 0; i < item.size(); i++) {
+          allItems.add(item.get(i));
         }
       }
     }
@@ -273,14 +380,22 @@ public class SyncDataJobsService {
    * @Description: syncData 개수만큼 dto 미리 생성
    **/
   private List<SyncJobDto> createMockSynDataJob(int syncDataCount, HttpServletRequest httpRequest,
-      List<SyncJobDto> syncJobDtoList) {
+      List<SyncJobDto> syncJobDtoList, List<String> baseDateList) {
+
+    Map<Long, LocalDate> baseDateMap = new LinkedHashMap<>();
+    AtomicLong counter = new AtomicLong(1);
+
+    baseDateList.forEach(dateString -> {
+      LocalDate localDate = LocalDate.parse(dateString, DateTimeFormatter.ofPattern("yyyyMMdd"));
+      baseDateMap.put(counter.getAndIncrement(), localDate);
+    });
 
     for (long indexInfoId = 1L; indexInfoId <= syncDataCount; indexInfoId++) {
       SyncJobDto dto = SyncJobDto.builder()
           .id(null)
           .jobType(ContentType.INDEX_DATA)
           .indexInfoId(indexInfoId)
-          .targetDate(null)
+          .targetDate(baseDateMap.get(indexInfoId))
           .worker(getUserIp(httpRequest))
           .jobTime(LocalDateTime.now())
           .result("SUCCESS")
@@ -340,7 +455,7 @@ public class SyncDataJobsService {
           IndexDataLink indexDataLink = new IndexDataLink(
               null,
               ContentType.INDEX_DATA,
-              index.getBaseDate(),
+              dto.getTargetDate(),
               getUserIp(request),
               LocalDateTime.now(),
               true,
