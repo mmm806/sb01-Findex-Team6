@@ -231,9 +231,6 @@ public class SyncDataJobsService {
               .map(item -> item.path("basDt").asText())
               .toList();
 
-          System.out.println("size = " + size);
-          System.out.println("baseDateList = " + baseDateList);
-
           List<SyncJobDto> dtos = createMockSynDataJob(size, httpRequest, syncJobDtoList, baseDateList);
           List<IndexDataLink> indexDataLinks = saveMockDtoToIndexDataLink(dtos, index, httpRequest);
 
