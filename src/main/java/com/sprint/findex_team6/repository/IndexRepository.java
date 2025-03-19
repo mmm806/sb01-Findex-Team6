@@ -12,4 +12,5 @@ public interface IndexRepository extends JpaRepository<Index, Long> {
   Optional<Index> findByIndexName(String indexName);
 
   List<Index> findAllByIdIn(Collection<Integer> ids);
+
 }

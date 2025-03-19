@@ -1,13 +1,18 @@
 package com.sprint.findex_team6.controller;
 
 import com.sprint.findex_team6.dto.SyncJobDto;
+import com.sprint.findex_team6.dto.request.CursorPageRequest;
 import com.sprint.findex_team6.dto.request.IndexDataSyncRequest;
 import com.sprint.findex_team6.service.SyncDataJobsService;
+import com.sprint.findex_team6.service.SyncInfoJobsService;
+import com.sprint.findex_team6.service.SyncJobsSearchService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,9 +31,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class SyncJobsController {
 
-//  private final SyncInfoJobsService syncInfoJobsService;
+  private final SyncInfoJobsService syncInfoJobsService;
   private final SyncDataJobsService syncDataJobsService;
-//  private final SyncJobsSearchService syncJobsSearchService;
+  private final SyncJobsSearchService syncJobsSearchService;
 
   /**
    * @methodName : syncInfo
@@ -36,12 +41,12 @@ public class SyncJobsController {
    * @author : wongil
    * @Description: 지수 정보 연동
    **/
-//  @ResponseStatus(HttpStatus.ACCEPTED)
-//  @PostMapping("/index-infos")
-//  public List<SyncJobDto> syncInformation(HttpServletRequest request) {
-//
-//    return syncInfoJobsService.syncInfo(request);
-//  }
+  @ResponseStatus(HttpStatus.ACCEPTED)
+  @PostMapping("/index-infos")
+  public List<SyncJobDto> syncInformation(HttpServletRequest request) {
+
+    return syncInfoJobsService.syncInfo(request);
+  }
 
   /**
    * @methodName : syncData
@@ -64,10 +69,10 @@ public class SyncJobsController {
   * @author : wongil
   * @Description: 여러 검색 조건에 따라 연동 정보 또는 데이터 조회
   **/
-//  @GetMapping
-//  public List<SyncJobDto> findSyncJob(@ModelAttribute("request") CursorPageRequest request) {
-//
-//    return syncJobsSearchService.search(request);
-//  }
+  @GetMapping
+  public List<SyncJobDto> findSyncJob(@ModelAttribute("request") CursorPageRequest request) {
+
+    return syncJobsSearchService.search(request);
+  }
 
 }
