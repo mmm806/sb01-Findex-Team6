@@ -21,12 +21,11 @@ public class SyncJobsSearchService {
     // 페이징해서 데이터 가져오기
     Slice<SyncJobDto> pagedSlice = indexDataLinkRepository.cursorBasePagination(request, slice);
 
-    Long totalElementCount = indexDataLinkRepository.cursorBasePaginationTotalCount(request);
+    long totalElementCount = indexDataLinkRepository.count();
+    int size = getSize(request);
 
     List<SyncJobDto> content = pagedSlice.getContent();
-
     boolean hasNext = pagedSlice.hasNext();
-
     String nextCursor = null;
     Long nextIdAfter = null;
 
@@ -46,10 +45,14 @@ public class SyncJobsSearchService {
         content,
         nextCursor,
         nextIdAfter,
-        request.getSize(),
+        size,
         totalElementCount,
         hasNext
         );
+  }
+
+  private int getSize(CursorPageRequest request) {
+    return request.getSize() == null ? 10 : request.getSize();
   }
 
 }

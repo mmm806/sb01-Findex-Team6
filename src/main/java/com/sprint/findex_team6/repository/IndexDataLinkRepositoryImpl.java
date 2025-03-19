@@ -61,6 +61,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
             cursor(request)
         )
         .orderBy(sortFieldAndDirection(request.getSortField(), request.getSortDirection()))
+        .orderBy(indexDataLink.id.desc())
         .limit(getSize(request) + 1) // nextCursor, nextIdAfter 구하기 위해서 1개 더 쿼리
         .fetch();
 
