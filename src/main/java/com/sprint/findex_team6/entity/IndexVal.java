@@ -9,6 +9,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import javax.net.ssl.SSLSession;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -43,5 +44,4 @@ public class IndexVal {
 
   @ManyToOne //하나의 지수정보에 대해 여러개의 지수 데이터
   private Index index;
-
 }
