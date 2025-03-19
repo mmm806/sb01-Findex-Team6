@@ -54,11 +54,13 @@ public class IndexValService {
   }
 
   private LocalDate calculateStartDate(String periodType) {
-    LocalDate today = LocalDate.now();
+    LocalDate endDate = LocalDate.now();
     return switch (periodType) {
-      case "DAILY" -> today;
-      case "WEEKLY" -> today.minusWeeks(1);
-      case "MONTHLY" -> today.minusMonths(1);
+      //case "DAILY" -> endDate;
+      //case "WEEKLY" -> endDate.minusWeeks(12);
+      case "MONTHLY" -> endDate.minusMonths(12);
+      case "QUARTERLY" -> endDate.minusMonths(36);
+      case "YEARLY" -> endDate.minusYears(5);
       default -> throw new IllegalStateException("Unexpected value: " + periodType);
     };
   }
