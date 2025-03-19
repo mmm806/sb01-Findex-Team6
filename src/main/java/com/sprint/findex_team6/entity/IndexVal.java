@@ -101,4 +101,28 @@ public class IndexVal {
     this.index = index;
   }
 
+  /**
+  * @methodName : changeData
+  * @date : 2025-03-19 오후 2:33
+  * @author : wongil
+  * @Description: IndexVal 거래와 관련된 데이터를 설정하기 위한 메서드
+  **/
+  public IndexVal changeData(Long mkp, Long clpr, Long hipr, Long lopr, Long vs, Long fltRt,
+      Long trqu,
+      Long trPrc,
+      Long lstgMrktTotAmt) {
+
+    this.marketPrice = BigDecimal.valueOf(mkp);
+    this.closePrice = BigDecimal.valueOf(clpr);
+    this.highPrice = BigDecimal.valueOf(hipr);
+    this.lowPrice = BigDecimal.valueOf(lopr);
+    this.versus = BigDecimal.valueOf(vs);
+    this.fluctuationRate = BigDecimal.valueOf(fltRt);
+    this.tradingQuantity = trqu;
+    this.tradingPrice = BigDecimal.valueOf(trPrc);
+    this.marketTotalCount = BigDecimal.valueOf(lstgMrktTotAmt);
+
+
+    return this;
+  }
 }

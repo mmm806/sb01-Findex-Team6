@@ -59,15 +59,4 @@ public class Index {
     this.sourceType = sourceType;
     this.favorite = favorite;
   }
-
-  public void updateInfo(String indexClassification, String idxNm, int employedItemsCount,
-      LocalDate baseDate, BigDecimal baseIndex) {
-
-    this.indexClassification = indexClassification;
-    this.indexName = idxNm;
-    this.employedItemsCount = employedItemsCount;
-    this.baseDate = baseDate;
-    this.baseIndex = baseIndex;
-
-  }
 }
