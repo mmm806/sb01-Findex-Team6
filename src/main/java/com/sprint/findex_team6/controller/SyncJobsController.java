@@ -2,7 +2,9 @@ package com.sprint.findex_team6.controller;
 
 import com.sprint.findex_team6.dto.SyncJobDto;
 import com.sprint.findex_team6.dto.request.CursorPageRequest;
+import com.sprint.findex_team6.dto.request.IndexDataSyncRequest;
 import com.sprint.findex_team6.dto.response.CursorPageResponseSyncJobDto;
+import com.sprint.findex_team6.service.SyncDataJobsService;
 import com.sprint.findex_team6.service.SyncInfoJobsService;
 import com.sprint.findex_team6.service.SyncJobsSearchService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -10,9 +12,11 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SyncJobsController {
 
   private final SyncInfoJobsService syncInfoJobsService;
-//  private final SyncDataJobsService syncDataJobsService;
+  private final SyncDataJobsService syncDataJobsService;
   private final SyncJobsSearchService syncJobsSearchService;
 
   /**
@@ -52,13 +56,13 @@ public class SyncJobsController {
    * @author : wongil
    * @Description: 지수 '데이터' 연동
    **/
-//  @ResponseStatus(HttpStatus.ACCEPTED)
-//  @PostMapping("/index-data")
-//  public List<SyncJobDto> syncData(@RequestBody @Validated IndexDataSyncRequest request,
-//      HttpServletRequest httpRequest) {
-//
-//    return syncDataJobsService.syncData(request, httpRequest);
-//  }
+  @ResponseStatus(HttpStatus.ACCEPTED)
+  @PostMapping("/index-data")
+  public List<SyncJobDto> syncData(@RequestBody @Validated IndexDataSyncRequest request,
+      HttpServletRequest httpRequest) {
+
+    return syncDataJobsService.syncData(request, httpRequest);
+  }
 
 
   /**
