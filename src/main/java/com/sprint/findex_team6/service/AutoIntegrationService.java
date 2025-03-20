@@ -24,7 +24,6 @@ public class AutoIntegrationService {
 
   public ResponseEntity<?> save(Index index, Boolean enabled){
     AutoIntegration autoIntegration = new AutoIntegration(index,enabled);
-    autoIntegration.setUpdateDate(LocalDate.now());
 
     try{
       autoIntegrationRepository.save(autoIntegration);
@@ -55,12 +54,7 @@ public class AutoIntegrationService {
   public ResponseEntity<?> updateAuto(){
     List<AutoIntegration> integrations = findActiveIndices();
 
-    for(AutoIntegration autoIntegration : integrations){
-      LocalDate currUpdate = LocalDate.now();
-      autoIntegration.setUpdateDate(currUpdate);
-
-      autoIntegrationRepository.save(autoIntegration);
-    }
+    autoIntegrationRepository.saveAll(integrations);
 
     return ResponseEntity.status(HttpStatus.OK).build();
   }

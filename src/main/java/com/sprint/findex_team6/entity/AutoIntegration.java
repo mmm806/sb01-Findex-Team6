@@ -33,10 +33,6 @@ public class AutoIntegration {
   @Setter
   private Boolean enabled; // 활성화 여부
 
-  @Column(name = "update_date")
-      @Setter
-  LocalDate updateDate;
-
   public AutoIntegration(Index index, Boolean enabled) {
     this.index = index;
     this.enabled = enabled;

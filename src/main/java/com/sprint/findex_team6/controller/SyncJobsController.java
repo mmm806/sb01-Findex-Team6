@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SyncJobsController {
 
   private final SyncInfoJobsService syncInfoJobsService;
-  //private final SyncDataJobsService syncDataJobsService;
+  private final SyncDataJobsService syncDataJobsService;
   private final SyncJobsSearchService syncJobsSearchService;
 
   /**
