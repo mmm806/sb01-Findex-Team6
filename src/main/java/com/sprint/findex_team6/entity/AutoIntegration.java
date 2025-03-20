@@ -2,6 +2,7 @@ package com.sprint.findex_team6.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -25,13 +26,17 @@ public class AutoIntegration {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @OneToOne
-  @JoinColumn(name = "index.id", nullable = false)
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "index_id", nullable = false)
   private Index index; // 지수 정보 참조
 
   @Column
   @Setter
   private Boolean enabled; // 활성화 여부
+
+  public void changeEnable(boolean enabled) {
+    this.enabled = enabled;
+  }
 
   public AutoIntegration(Index index, Boolean enabled) {
     this.index = index;
