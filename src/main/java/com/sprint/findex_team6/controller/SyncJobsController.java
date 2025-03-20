@@ -3,7 +3,7 @@ package com.sprint.findex_team6.controller;
 import com.sprint.findex_team6.dto.SyncJobDto;
 import com.sprint.findex_team6.dto.request.CursorPageRequest;
 import com.sprint.findex_team6.dto.request.IndexDataSyncRequest;
-import com.sprint.findex_team6.service.SyncDataJobsService;
+//import com.sprint.findex_team6.service.SyncDataJobsService;
 import com.sprint.findex_team6.service.SyncInfoJobsService;
 import com.sprint.findex_team6.service.SyncJobsSearchService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SyncJobsController {
 
   private final SyncInfoJobsService syncInfoJobsService;
-  private final SyncDataJobsService syncDataJobsService;
+  //private final SyncDataJobsService syncDataJobsService;
   private final SyncJobsSearchService syncJobsSearchService;
 
   /**
@@ -48,19 +48,19 @@ public class SyncJobsController {
     return syncInfoJobsService.syncInfo(request);
   }
 
-  /**
-   * @methodName : syncData
-   * @date : 2025-03-13 오후 9:00
-   * @author : wongil
-   * @Description: 지수 '데이터' 연동
-   **/
-  @ResponseStatus(HttpStatus.ACCEPTED)
-  @PostMapping("/index-data")
-  public List<SyncJobDto> syncData(@RequestBody @Validated IndexDataSyncRequest request,
-      HttpServletRequest httpRequest) {
-
-    return syncDataJobsService.syncData(request, httpRequest);
-  }
+//  /**
+//   * @methodName : syncData
+//   * @date : 2025-03-13 오후 9:00
+//   * @author : wongil
+//   * @Description: 지수 '데이터' 연동
+//   **/
+//  @ResponseStatus(HttpStatus.ACCEPTED)
+//  @PostMapping("/index-data")
+//  public List<SyncJobDto> syncData(@RequestBody @Validated IndexDataSyncRequest request,
+//      HttpServletRequest httpRequest) {
+//
+//    return syncDataJobsService.syncData(request, httpRequest);
+//  }
 
 
   /**

@@ -34,6 +34,7 @@ public class AutoIntegration {
   private Boolean enabled; // 활성화 여부
 
   @Column(name = "update_date")
+      @Setter
   LocalDate updateDate;
 
   public AutoIntegration(Index index, Boolean enabled) {

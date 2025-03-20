@@ -5,6 +5,7 @@ import com.sprint.findex_team6.entity.AutoIntegration;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.repository.AutoIntegrationRepository;
 import jakarta.transaction.Transactional;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +21,9 @@ public class AutoIntegrationService {
 
   private final AutoIntegrationRepository autoIntegrationRepository;
 
-  public ResponseEntity<?> save(Index index){
-    AutoIntegration autoIntegration = new AutoIntegration(index,false);
+
+  public ResponseEntity<?> save(Index index, Boolean enabled){
+    AutoIntegration autoIntegration = new AutoIntegration(index,enabled);
     try{
       autoIntegrationRepository.save(autoIntegration);
     } catch (Exception e){
@@ -50,7 +52,10 @@ public class AutoIntegrationService {
     List<AutoIntegration> integrations = findActiveIndices();
 
     for(AutoIntegration autoIntegration : integrations){
+      LocalDate currUpdate = LocalDate.now();
+      autoIntegration.setUpdateDate(currUpdate);
 
+      autoIntegrationRepository.save(autoIntegration);
     }
 
     return ResponseEntity.status(HttpStatus.OK).build();
