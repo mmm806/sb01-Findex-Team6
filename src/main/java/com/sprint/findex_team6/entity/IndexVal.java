@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import javax.net.ssl.SSLSession;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,6 +36,7 @@ public class IndexVal {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
+
 
   @Column(name = "date")
   private LocalDate baseDate;         // 기준 일자
@@ -67,6 +69,7 @@ public class IndexVal {
 
   @Column(name = "trading_price")
   private BigDecimal tradingPrice; // 거래대금
+
 
   @Column(name = "market_total_count")
   private BigDecimal marketTotalCount;    // 상장 시가 총액
@@ -116,7 +119,7 @@ public class IndexVal {
       Double lstgMrktTotAmt) {
 
     this.marketPrice = BigDecimal.valueOf(mkp);
-    this.closePrice = BigDecimal.valueOf(clpr);
+    this.closingPrice = BigDecimal.valueOf(clpr);
     this.highPrice = BigDecimal.valueOf(hipr);
     this.lowPrice = BigDecimal.valueOf(lopr);
     this.versus = BigDecimal.valueOf(vs);
