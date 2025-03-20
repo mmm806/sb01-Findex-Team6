@@ -18,6 +18,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.PageRequest;
@@ -133,7 +135,7 @@ public class IndexService {
 
   public IndexInfoDto getIndexInfoById(Long id) {
     Index index = indexRepository.findById(id)
-            .orElseThrow(() -> new NotFoundException("조회한 지수 정보를 찾을 수 없습니다."));
+            .orElseThrow(() -> new NotFoundException("잘못된 요청입니다."));
     return indexMapper.toDto((index));
   }
 
@@ -142,26 +144,45 @@ public class IndexService {
           String indexClassification, String indexName, Boolean favorite, String sortField, String sortDirection,
           Long idAfter, Pageable pageable) {
 
+    // 정렬 조건 생성
     Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortField);
     pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
 
-    List<Index> indexList = (idAfter == null)
-            ? indexRepository.findAll(pageable).getContent()
-            : indexRepository.findByIdGreaterThan(idAfter, pageable);
+    // 지수 분류명, 지수명, 즐겨찾기 조건을 반영하여 필터링
+    List<Index> indexList;
+    if (idAfter == null) {
+      indexList = indexRepository.findByIndexClassificationContainingAndIndexNameContainingAndFavorite(
+              indexClassification, indexName, favorite, pageable);
+    } else {
+      indexList = indexRepository.findByIdGreaterThanAndIndexClassificationContainingAndIndexNameContainingAndFavorite(
+              idAfter, indexClassification, indexName, favorite, pageable);
+    }
 
+    // DTO 변환
     List<IndexInfoDto> indexDtos = indexList.stream()
             .map(indexMapper::toDto)
-            .toList();
+            .collect(Collectors.toList());
 
+    // 마지막 인덱스 ID 계산 (커서 기반 페이지네이션을 위해 마지막 ID 확인)
+    Long lastIndexId = indexDtos.isEmpty() ? null : indexDtos.get(indexDtos.size() - 1).id();
+
+    // 다음 페이지 여부 판단
+    boolean hasNext = indexDtos.size() == pageable.getPageSize();
+
+    // 페이지네이션 응답 생성
     return new CursorPageResponseIndexInfoDto<>(
             indexDtos,
-            indexDtos.isEmpty() ? null : String.valueOf(indexDtos.get(indexDtos.size() - 1).id()),
-            indexDtos.isEmpty() ? null : indexDtos.get(indexDtos.size() - 1).id(),
+            hasNext ? String.valueOf(lastIndexId) : null,  // nextCursor
+            lastIndexId,
             pageable.getPageSize(),
-            indexRepository.count(),
-            !indexDtos.isEmpty()
+            indexRepository.count(),  // 전체 데이터 수
+            hasNext  // hasNext는 다음 페이지가 있는지 여부
     );
   }
+
+
+
+
 
 
   public List<IndexInfoSummaryDto> getIndexSummaries() {
