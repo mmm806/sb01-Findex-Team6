@@ -50,7 +50,8 @@ public class Index {
   @Column
   private Boolean favorite;   // 즐겨찾기
 
-  public Index(String indexClassification, String indexName, Integer employedItemsCount, LocalDate baseDate, BigDecimal baseIndex, SourceType sourceType, Boolean favorite){
+  public Index(String indexClassification, String indexName, Integer employedItemsCount,
+      LocalDate baseDate, BigDecimal baseIndex, SourceType sourceType, Boolean favorite) {
     this.indexClassification = indexClassification;
     this.indexName = indexName;
     this.employedItemsCount = employedItemsCount;
@@ -58,5 +59,15 @@ public class Index {
     this.baseIndex = baseIndex;
     this.sourceType = sourceType;
     this.favorite = favorite;
+  }
+
+  public void updateInfo(String indexClassification, String idxNm, int employedItemsCount,
+      LocalDate baseDate, BigDecimal baseIndex) {
+
+    this.indexClassification = indexClassification;
+    this.indexName = idxNm;
+    this.employedItemsCount = employedItemsCount;
+    this.baseDate = baseDate;
+    this.baseIndex = baseIndex;
   }
 }

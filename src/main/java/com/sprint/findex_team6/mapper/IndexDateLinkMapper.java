@@ -8,7 +8,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface IndexDateLinkMapper {
 
-  @Mapping(source = "sourceType", target = "jobType")
+  @Mapping(source = "jobType", target = "jobType")
   @Mapping(source = "index.id", target = "indexInfoId")
   SyncJobDto toDto(IndexDataLink indexDataLink);
 }
