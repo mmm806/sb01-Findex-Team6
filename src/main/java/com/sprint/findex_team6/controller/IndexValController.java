@@ -21,10 +21,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class IndexValController {
   private final IndexValService indexValService;
 
-  @GetMapping("/{id}/chart")
+  @GetMapping("/{id}/chart") //차트 단건 조회
   public ResponseEntity<IndexChartDto> getIndexChart(@PathVariable Long id, @RequestParam String periodType) {
     IndexChartDto indexChartDto = indexValService.getIndexChart(periodType, id);
     return ResponseEntity.status(HttpStatus.OK).body(indexChartDto);
+  }
+  @GetMapping("/charts") //차트 전체 목록 조회
+  public ResponseEntity<List<IndexChartDto>> getIndexCharts(
+      @RequestParam List<Long> ids,
+      @RequestParam String periodType) {
+    List<IndexChartDto> indexChartDtos = indexValService.getIndexCharts(periodType, ids);
+    return ResponseEntity.ok(indexChartDtos);
   }
 
   @GetMapping("/performance/favorite")
