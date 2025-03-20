@@ -2,6 +2,7 @@ package com.sprint.findex_team6.repository;
 
 import com.sprint.findex_team6.entity.IndexVal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.math.BigDecimal;
 import org.springframework.data.domain.Page;
@@ -20,6 +21,7 @@ public interface IndexValRepository extends JpaRepository<IndexVal, Long> {
       Long indexId, LocalDate startDate, LocalDate endDate,
       Pageable pageable);
 
+  List<IndexVal> findAllByIndex_IdAndDate(Long indexId, LocalDate date);
   @Query("SELECT iv FROM IndexVal iv "
       + "WHERE iv.index.id = :indexId "
       + "AND iv.baseDate BETWEEN :startDate AND :endDate "
@@ -51,4 +53,5 @@ public interface IndexValRepository extends JpaRepository<IndexVal, Long> {
   Page<IndexVal> findByClosingPriceCursorAsc(
       Long indexId, LocalDate startDate, LocalDate endDate,
       BigDecimal cursor, Long idAfter, Pageable pageable);
+  
 }
