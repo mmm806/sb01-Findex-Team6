@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.AccessLevel;
@@ -26,7 +27,9 @@ import org.hibernate.type.SqlTypes;
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@Table(name = "index_val")
+@Table(name = "index_val", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"date", "index_id"})
+})
 public class IndexVal {
 
   @Id
@@ -34,7 +37,7 @@ public class IndexVal {
   private Long id;
 
   @Column(name = "date")
-  private LocalDate date;         // 기준 일자
+  private LocalDate baseDate;         // 기준 일자
 
   @Enumerated(EnumType.STRING)
   @Column(name = "source_type", columnDefinition = "source_type")
@@ -45,7 +48,7 @@ public class IndexVal {
   private BigDecimal marketPrice; // 시가
 
   @Column(name = "close_price")
-  private BigDecimal closePrice; // 종가
+  private BigDecimal closingPrice; // 종가
 
   @Column(name = "high_price")
   private BigDecimal highPrice; // 고가
@@ -74,10 +77,10 @@ public class IndexVal {
 
   @Builder
   public IndexVal(
-      LocalDate date,
+      LocalDate baseDate,
       SourceType sourceType,
       BigDecimal marketPrice,
-      BigDecimal closePrice,
+      BigDecimal closingPrice,
       BigDecimal highPrice,
       BigDecimal lowPrice,
       BigDecimal versus,
@@ -87,10 +90,10 @@ public class IndexVal {
       BigDecimal marketTotalCount,
       Index index
   ) {
-    this.date = date;
+    this.baseDate = baseDate;
     this.sourceType = sourceType;
     this.marketPrice = marketPrice;
-    this.closePrice = closePrice;
+    this.closingPrice = closingPrice;
     this.highPrice = highPrice;
     this.lowPrice = lowPrice;
     this.versus = versus;
@@ -107,10 +110,10 @@ public class IndexVal {
   * @author : wongil
   * @Description: IndexVal 거래와 관련된 데이터를 설정하기 위한 메서드
   **/
-  public IndexVal changeData(Long mkp, Long clpr, Long hipr, Long lopr, Long vs, Long fltRt,
+  public IndexVal changeData(Double mkp, Double clpr, Double hipr, Double lopr, Double vs, Double fltRt,
       Long trqu,
-      Long trPrc,
-      Long lstgMrktTotAmt) {
+      Double trPrc,
+      Double lstgMrktTotAmt) {
 
     this.marketPrice = BigDecimal.valueOf(mkp);
     this.closePrice = BigDecimal.valueOf(clpr);
