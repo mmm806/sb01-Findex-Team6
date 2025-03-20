@@ -37,7 +37,7 @@ public class AutoIntegrationService {
   }
 
   public ResponseEntity<?> update(Index index){
-    if(autoIntegrationRepository.findByIndex(index).isEmpty()){
+    if(autoIntegrationRepository.findByIndex((index)).isEmpty()){
       return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
     AutoIntegration autoIntegration = autoIntegrationRepository.findByIndex(index).get();

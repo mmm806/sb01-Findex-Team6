@@ -263,8 +263,10 @@ public class IndexValService {
     if (sortField == null || sortField.isBlank()) {
       sortField = "baseDate";
     }
-    Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+    Sort.Direction direction =
+        "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
     return Sort.by(direction, sortField);
+  }
 
   @Transactional
   public IndexDataDto create(IndexDataCreateRequest request) {
