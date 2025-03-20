@@ -415,7 +415,7 @@ public class SyncInfoJobsService {
    * @methodName : getAllInfosByCallOpenApi
    * @date : 2025-03-17 오후 10:29
    * @author : wongil
-   * @Description: 지수 정보를 가져오기 위한 코드 현재 날짜로부터 -3일까지의 데이터만 긁어옴
+   * @Description: 지수 정보를 가져오기 위한 코드 현재 날짜로부터 -1일까지의 데이터만 긁어옴
    **/
   private String getAllInfosByCallOpenApi() {
 
