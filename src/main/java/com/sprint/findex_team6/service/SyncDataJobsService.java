@@ -134,6 +134,11 @@ public class SyncDataJobsService {
       Long trqu = filteredItems.get(i).path("trqu").asLong();// 거래량
       Double trPrc = filteredItems.get(i).path("trPrc").asDouble();// 거래대금
       Double lstgMrktTotAmt = filteredItems.get(i).path("lstgMrktTotAmt").asDouble();// 상장시가총액
+      String basDt = filteredItems.get(i).path("basDt").asText();// 가져온 데이터 날짜
+
+      if (isExistsIndexDataLink(basDt, indexVal)) {
+        continue;
+      }
 
       IndexVal changedIndexVal = indexVal.changeData(mkp, clpr, hipr, lopr, vs, fltRt, trqu, trPrc,
           lstgMrktTotAmt);
@@ -141,6 +146,13 @@ public class SyncDataJobsService {
       indexValRepository.save(changedIndexVal);
     }
 
+  }
+
+  private boolean isExistsIndexDataLink(String basDt, IndexVal indexVal) {
+    LocalDate localDate = LocalDate.parse(basDt, DateTimeFormatter.ofPattern("yyyyMMdd"));
+
+    return indexDataLinkRepository.findFirstByIndex_IdAndTargetDate(indexVal.getIndex().getId(), localDate)
+        .isPresent();
   }
 
   /**
@@ -167,10 +179,9 @@ public class SyncDataJobsService {
   private List<IndexVal> findIndexValListByIndexIdAndTargetDate(List<Index> indexList, List<SyncJobDto> jobDtoList) {
     return indexList.stream()
         .flatMap(index ->
-            jobDtoList
-                .stream()
+            jobDtoList.stream()
                 .flatMap(dto ->
-                    indexValRepository.findAllByIndex_IdAndDate(index.getId(), dto.getTargetDate())
+                    indexValRepository.findAllByIndex_IdAndBaseDate(index.getId(), dto.getTargetDate())
                         .stream())
         )
         .toList();
@@ -255,6 +266,12 @@ public class SyncDataJobsService {
 
     List<IndexVal> indexVals = new ArrayList<>();
 
+    boolean existsIndexDataLink = isExistsIndexDataLink(indexDataLinks, index);
+
+    if (!existsIndexDataLink) {
+      return indexValRepository.findAll();
+    }
+
     for (int i = 0; i < size; i++) {
       IndexVal indexVal = new IndexVal(
           indexDataLinks.get(i).getTargetDate(),
@@ -277,6 +294,16 @@ public class SyncDataJobsService {
     indexValRepository.saveAll(indexVals);
 
     return indexVals;
+  }
+
+  private boolean isExistsIndexDataLink(List<IndexDataLink> indexDataLinks, Index index) {
+    List<LocalDate> list = indexDataLinks.stream()
+        .map(IndexDataLink::getTargetDate)
+        .toList();
+    List<IndexDataLink> byIndexIdAndTargetDateIn = indexDataLinkRepository.findByIndex_IdAndTargetDateIn(
+        index.getId(), list);
+
+    return byIndexIdAndTargetDateIn.isEmpty();
   }
 
   /**
@@ -446,6 +473,10 @@ public class SyncDataJobsService {
 
     List<IndexDataLink> links = new ArrayList<>();
 
+    if (!isExistsIndexDateLink(dtos, index)) {
+      return indexDataLinkRepository.findAll();
+    }
+
     dtos
         .forEach(dto -> {
 
@@ -463,6 +494,17 @@ public class SyncDataJobsService {
         });
 
     return indexDataLinkRepository.saveAll(links);
+  }
+
+  private boolean isExistsIndexDateLink(List<SyncJobDto> dtos, Index index) {
+    List<LocalDate> list = dtos.stream()
+        .map(SyncJobDto::getTargetDate)
+        .toList();
+
+    List<IndexDataLink> byIndexIdAndTargetDateIn = indexDataLinkRepository.findByIndex_IdAndTargetDateIn(
+        index.getId(), list);
+
+    return byIndexIdAndTargetDateIn.isEmpty();
   }
 
 
