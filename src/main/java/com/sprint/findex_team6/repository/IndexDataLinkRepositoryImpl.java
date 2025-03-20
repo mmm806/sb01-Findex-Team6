@@ -24,7 +24,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
-public class IndexDataLinkImplRepository implements IndexDataLinkQuerydslRepository {
+public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslRepository {
 
   private final JPAQueryFactory queryFactory;
 

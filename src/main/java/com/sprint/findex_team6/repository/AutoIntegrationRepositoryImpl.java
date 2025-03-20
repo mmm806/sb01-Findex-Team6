@@ -10,6 +10,7 @@ import com.sprint.findex_team6.dto.AutoSyncConfigDto;
 import com.sprint.findex_team6.dto.QAutoSyncConfigDto;
 import com.sprint.findex_team6.dto.request.AutoSyncConfigCursorPageRequest;
 import com.sprint.findex_team6.entity.QIndex;
+import java.util.Base64;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -17,7 +18,7 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
 
 @RequiredArgsConstructor
-public class AutoIntegrationImplRepository implements AutoIntegrationQuerydslRepository {
+public class AutoIntegrationRepositoryImpl implements AutoIntegrationQuerydslRepository {
 
   private final JPAQueryFactory queryFactory;
 
@@ -63,6 +64,8 @@ public class AutoIntegrationImplRepository implements AutoIntegrationQuerydslRep
     boolean isDesc =
         request.sortDirection() == null || request.sortDirection().isBlank()
             || "desc".equalsIgnoreCase(request.sortDirection());
+
+    String s = new String(Base64.getDecoder().decode(request.cursor()));
 
     Long idAfter = request.idAfter();
 
