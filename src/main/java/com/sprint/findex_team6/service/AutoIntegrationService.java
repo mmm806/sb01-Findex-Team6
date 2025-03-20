@@ -5,9 +5,12 @@ import com.sprint.findex_team6.entity.AutoIntegration;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.repository.AutoIntegrationRepository;
 import jakarta.transaction.Transactional;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -27,6 +30,43 @@ public class AutoIntegrationService {
 
 
     return ResponseEntity.status(HttpStatus.CREATED).body(autoIntegration);
+  }
+
+  public ResponseEntity<?> update(Index index){
+    if(autoIntegrationRepository.findByIndex(index).isEmpty()){
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+    AutoIntegration autoIntegration = autoIntegrationRepository.findByIndex(index).get();
+    autoIntegration.setEnabled(!autoIntegration.getEnabled());
+
+    autoIntegrationRepository.save(autoIntegration);
+
+    return ResponseEntity.status(HttpStatus.CREATED).body(autoIntegration);
+  }
+
+
+  @Scheduled(cron = "0 0 0 * * *") // 밤 12시에 연동
+  public ResponseEntity<?> updateAuto(){
+    List<AutoIntegration> integrations = findActiveIndices();
+
+    for(AutoIntegration autoIntegration : integrations){
+
+    }
+
+    return ResponseEntity.status(HttpStatus.OK).build();
+  }
+
+  private List<AutoIntegration> findActiveIndices(){
+    List<AutoIntegration> list = new ArrayList<>();
+
+    List<AutoIntegration> autoIntegrations = autoIntegrationRepository.findAll();
+    for(AutoIntegration autoIntegration : autoIntegrations){
+      if(autoIntegration.getEnabled()){
+        list.add(autoIntegration);
+      }
+    }
+
+    return list;
   }
 
 }
