@@ -24,7 +24,7 @@ public class AutoIntegration {
   private Long id;
 
   @OneToOne
-  @JoinColumn(name = "index_id", nullable = false)
+  @JoinColumn(name = "index.id", nullable = false)
   private Index index; // 지수 정보 참조
 
   @Column
