@@ -3,10 +3,13 @@ package com.sprint.findex_team6.service;
 import static com.sprint.findex_team6.error.ErrorCode.INDEX_NOT_FOUND;
 
 import com.opencsv.CSVWriter;
+import com.sprint.findex_team6.dto.IndexDataDto;
 import com.sprint.findex_team6.dto.dashboard.ChartDataPoint;
 import com.sprint.findex_team6.dto.dashboard.IndexChartDto;
 import com.sprint.findex_team6.dto.dashboard.IndexPerformanceDto;
 import com.sprint.findex_team6.dto.dashboard.RankedIndexPerformanceDto;
+import com.sprint.findex_team6.dto.request.IndexDataCreateRequest;
+import com.sprint.findex_team6.dto.request.IndexDataQueryRequest;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexVal;
 import com.sprint.findex_team6.error.CustomException;
@@ -22,16 +25,152 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.sprint.findex_team6.dto.CursorPageResponse;
+import com.sprint.findex_team6.dto.request.IndexDataUpdateRequest;
+import com.sprint.findex_team6.entity.SourceType;
+import com.sprint.findex_team6.exception.NotFoundException;
+import com.sprint.findex_team6.mapper.CursorPageResponseMapper;
+import com.sprint.findex_team6.mapper.IndexValMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort.Order;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class IndexValService {
 
   private final IndexValRepository indexValRepository;
   private final IndexRepository indexRepository;
+  private final IndexValMapper indexValMapper;
+  private final CursorPageResponseMapper cursorPageResponseMapper;
+
+  @Transactional
+  public IndexDataDto update (Long id, IndexDataUpdateRequest indexDataUpdateRequest){
+    IndexVal indexVal = indexValRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("IndexVal not found. id=" + id));
+
+    if (indexDataUpdateRequest.marketPrice() != null) {
+      indexVal.setMarketPrice(indexDataUpdateRequest.marketPrice());
+    }
+    if (indexDataUpdateRequest.closingPrice() != null) {
+      indexVal.setClosingPrice(indexDataUpdateRequest.closingPrice());
+    }
+    if (indexDataUpdateRequest.highPrice() != null) {
+      indexVal.setHighPrice(indexDataUpdateRequest.highPrice());
+    }
+    if (indexDataUpdateRequest.lowPrice() != null) {
+      indexVal.setLowPrice(indexDataUpdateRequest.lowPrice());
+    }
+    if (indexDataUpdateRequest.versus() != null) {
+      indexVal.setVersus(indexDataUpdateRequest.versus());
+    }
+    if (indexDataUpdateRequest.fluctuationRate() != null) {
+      indexVal.setFluctuationRate(indexDataUpdateRequest.fluctuationRate());
+    }
+    if (indexDataUpdateRequest.tradingQuantity() != null) {
+      indexVal.setTradingQuantity(indexDataUpdateRequest.tradingQuantity());
+    }
+    if (indexDataUpdateRequest.tradingPrice() != null) {
+      indexVal.setTradingPrice(BigDecimal.valueOf(indexDataUpdateRequest.tradingPrice()));
+    }
+    if (indexDataUpdateRequest.marketTotalAmount() != null) {
+      indexVal.setMarketTotalCount(BigDecimal.valueOf(indexDataUpdateRequest.marketTotalAmount()));
+    }
+    return indexValMapper.toDto(indexVal);
+  }
+
+  /**
+   * 정렬 필드 및 방향 설정
+   */
+
+  private Sort getSort(String sortField, String sortDirection) {
+    if (sortField == null || sortField.isBlank()) {
+      sortField = "baseDate";
+    }
+    Sort.Direction direction =
+        "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+    return Sort.by(direction, sortField);
+  }
+  @Transactional
+    public IndexDataDto create (IndexDataCreateRequest request){
+      Index index = indexRepository.findById(request.indexInfoId())
+          .orElseThrow(() -> new NotFoundException("Index not found. id=" + request.indexInfoId()));
+      IndexVal indexVal = IndexVal.builder()
+          .baseDate(request.baseDate())
+          .sourceType(SourceType.USER)
+          .marketPrice(request.marketPrice())
+          .closingPrice(request.closingPrice())
+          .highPrice(request.highPrice())
+          .lowPrice(request.lowPrice())
+          .versus(request.versus())
+          .fluctuationRate(request.fluctuationRate())
+          .tradingQuantity(request.tradingQuantity())
+          .tradingPrice(BigDecimal.valueOf(request.tradingPrice()))
+          .marketTotalCount(BigDecimal.valueOf(request.marketTotalAmount()))
+          .index(index)
+          .build();
+
+      indexVal = indexValRepository.save(indexVal);
+      return indexValMapper.toDto(indexVal);
+    }
+
+    public CursorPageResponse<IndexDataDto> findIndexData (IndexDataQueryRequest request, Pageable
+    pageable){
+      //값 세팅
+      Long indexInfoId = request.indexInfoId();
+      LocalDate startDate = request.startDate() == null ?
+          LocalDate.of(1900, 1, 1) : request.startDate();
+      LocalDate endDate = request.endDate() == null ?
+          LocalDate.now() : request.endDate();
+      String cursor = request.cursor();
+      Long idAfter = request.idAfter();
+
+      //indexInfoId가 null이면 indexInfoId에 관계 없이 최신 데이터 리턴
+      if (indexInfoId == null) {
+        Page<IndexDataDto> page = indexValRepository.findAll(pageable)
+            .map(indexValMapper::toDto);
+        return cursorPageResponseMapper.fromPageIndexDataDto(page);
+      }
+
+      Sort sort = pageable.getSort();
+      Order order = sort.iterator().next();
+      String property = order.getProperty();
+      Page<IndexVal> page;
+
+      if (cursor == null) { //cursor가 null 이면 startDate-endDate 사이의 데이터 리턴
+        page = indexValRepository.findByIndex_IdAndBaseDateBetween(
+            indexInfoId, startDate, endDate, pageable);
+      } else if (property.equals("closingPrice")) { //정렬 필드가 closingPrice인 경우
+        if (order.getDirection().isDescending()) { //내림차순이면 cursor보다 작은 데이터를 찾음
+          page = indexValRepository.findByClosingPriceCursorDesc(
+              indexInfoId, startDate, endDate, new BigDecimal(cursor), idAfter, pageable);
+        } else { //오름차순이면 cursor보다 큰 데이터를 찾음
+          page = indexValRepository.findByClosingPriceCursorAsc(
+              indexInfoId, startDate, endDate, new BigDecimal(cursor), idAfter, pageable);
+        }
+      } else { //정렬 필드가 baseDate인 경우
+        if (order.getDirection().isDescending()) { //위와 같이 내림차순, 오름차순 처리
+          page = indexValRepository.findByBaseDateCursorDesc(
+              indexInfoId, startDate, endDate, LocalDate.parse(cursor), idAfter, pageable);
+        } else {
+          page = indexValRepository.findByBaseDateCursorAsc(
+              indexInfoId, startDate, endDate, LocalDate.parse(cursor), idAfter, pageable);
+        }
+      }
+      return cursorPageResponseMapper.fromPageIndexDataDto(page.map(indexValMapper::toDto));
+    }
+
+  @Transactional
+  public void delete (Long id){
+    indexValRepository.deleteById(id);
+  }
 
   //관심지수 성과 조회
   @Transactional(readOnly = true)
@@ -66,8 +205,8 @@ public class IndexValService {
   private LocalDate calculateStartDate(String periodType) {
     LocalDate endDate = LocalDate.now();
     return switch (periodType) {
-      //case "DAILY" -> endDate;
-      //case "WEEKLY" -> endDate.minusWeeks(12);
+      case "DAILY" -> endDate;
+      case "WEEKLY" -> endDate.minusWeeks(12);
       case "MONTHLY" -> endDate.minusMonths(12);
       case "QUARTERLY" -> endDate.minusMonths(36);
       case "YEARLY" -> endDate.minusYears(5);
@@ -262,16 +401,5 @@ public class IndexValService {
     } catch (DateTimeParseException e) {
       return defaultDate;
     }
-  }
-
-  /**
-   * 정렬 필드 및 방향 설정
-   */
-  private Sort getSort(String sortField, String sortDirection) {
-    if (sortField == null || sortField.isBlank()) {
-      sortField = "baseDate";
-    }
-    Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
-    return Sort.by(direction, sortField);
   }
 }
