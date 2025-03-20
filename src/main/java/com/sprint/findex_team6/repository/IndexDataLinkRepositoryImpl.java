@@ -10,7 +10,7 @@ import com.querydsl.core.types.dsl.BooleanPath;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.sprint.findex_team6.dto.SyncJobDto;
-import com.sprint.findex_team6.dto.request.CursorPageRequest;
+import com.sprint.findex_team6.dto.request.SyncCursorPageRequest;
 import com.sprint.findex_team6.entity.ContentType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -23,7 +23,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
-public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuerydsl {
+public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslRepository {
 
   private final JPAQueryFactory queryFactory;
 
@@ -34,7 +34,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
    * @Description: querydsl로 구현 CursorPageResponseSyncJobDto
    **/
   @Override
-  public Slice<SyncJobDto> cursorBasePagination(CursorPageRequest request, Pageable slice) {
+  public Slice<SyncJobDto> cursorBasePagination(SyncCursorPageRequest request, Pageable slice) {
 
     List<SyncJobDto> paged = queryFactory
         .select(new QSyncJobDto(
@@ -76,7 +76,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
    * @Description: 카운트 쿼리
    **/
   @Override
-  public Long cursorBasePaginationTotalCount(CursorPageRequest request) {
+  public Long cursorBasePaginationTotalCount(SyncCursorPageRequest request) {
     return queryFactory
         .select(indexDataLink.count())
         .from(indexDataLink)
@@ -103,7 +103,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
    * ?sortField=jobTime&sortDirection=desc&cursor=2025-03-19T04:03:46.008145&idAfter=9934 cursor =
    * 다음 페이지 시작점 idAfter = 이전 페이지의 마지막 요소
    **/
-  private BooleanExpression cursor(CursorPageRequest request) {
+  private BooleanExpression cursor(SyncCursorPageRequest request) {
     if (request.getCursor() == null) {
       return null;
     }
@@ -112,7 +112,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
     String sortField = (field == null || field.isBlank()) ? "jobTime" : request.getSortField();
 
     String direction = request.getSortDirection();
-    boolean sortDirection =
+    boolean isDesc =
         direction == null || direction.isBlank() || direction.equalsIgnoreCase("desc");
 
     LocalDateTime cursor = LocalDateTime.parse(request.getCursor());
@@ -121,7 +121,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
 
     // 정렬 필드가 jobTime이고 내림차순 정렬일 때
     if (sortField.equals("jobTime")) {
-      if (sortDirection) {
+      if (isDesc) {
 
         BooleanExpression lowerThanEqualCursor = getJobTimeDescBaseCondition(cursor, idAfter);
 
@@ -147,7 +147,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
         return greaterThanEqualCursor;
       }
     } else { // "대상 날짜" baseTime을 내림차순 쿼리
-      if (sortDirection) {
+      if (isDesc) {
 
         BooleanExpression lowerThanEqualBaseDateCursor = getDateDescBaseCondition(localDateCursor, idAfter);
 
@@ -303,7 +303,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
    * @author : wongil
    * @Description: 한번에 몇개씩 가져올 건지 구함. null이면 기본값으로 10개씩
    **/
-  private int getSize(CursorPageRequest request) {
+  private int getSize(SyncCursorPageRequest request) {
     return request.getSize() != null
         ? request.getSize()
         : 10;
@@ -333,7 +333,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
    * @author : wongil
    * @Description: jobTime보다 작은 시간을 가진거 뽑기
    **/
-  private BooleanExpression jobTimeTo(CursorPageRequest request) {
+  private BooleanExpression jobTimeTo(SyncCursorPageRequest request) {
     return request.getJobTimeTo() != null
         ? indexDataLink.jobTime.loe(request.getJobTimeTo())
         : null;
@@ -345,7 +345,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
    * @author : wongil
    * @Description: jobTime보다 큰 시간
    **/
-  private BooleanExpression jobTimeFrom(CursorPageRequest request) {
+  private BooleanExpression jobTimeFrom(SyncCursorPageRequest request) {
     return request.getJobTimeFrom() != null
         ? indexDataLink.jobTime.goe(request.getJobTimeFrom())
         : null;
@@ -357,7 +357,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
    * @author : wongil
    * @Description: 파라미터로 넘어오면 worker랑 같은 애들 뽑기
    **/
-  private BooleanExpression workerEq(CursorPageRequest request) {
+  private BooleanExpression workerEq(SyncCursorPageRequest request) {
     return request.getWorker() != null
         ? indexDataLink.worker.eq(request.getWorker())
         : null;
@@ -369,7 +369,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
    * @author : wongil
    * @Description: index의 기준 시점을 기준으로 같거나 그 이전 날부터 돌아가며 데이터 뽑기
    **/
-  private BooleanExpression baseDateTo(CursorPageRequest request) {
+  private BooleanExpression baseDateTo(SyncCursorPageRequest request) {
     return request.getBaseDateTo() != null
         ? index.baseDate.loe(request.getBaseDateTo())
         : null;
@@ -381,7 +381,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
    * @author : wongil
    * @Description: index의 기준 시점을 기준으로 같거나 다음날부터 데이터 뽑기
    **/
-  private BooleanExpression baseDateFrom(CursorPageRequest request) {
+  private BooleanExpression baseDateFrom(SyncCursorPageRequest request) {
     System.out.println("baseDateFrom: " + request.getBaseDateFrom());
     return request.getBaseDateFrom() != null
         ? index.baseDate.goe(request.getBaseDateFrom())
@@ -394,7 +394,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuery
    * @author : wongil
    * @Description: index의 id와 파라미터로 넘어온 IndexInfoId가 같은지 비교
    **/
-  private BooleanExpression indexInfoIdEq(CursorPageRequest request) {
+  private BooleanExpression indexInfoIdEq(SyncCursorPageRequest request) {
     return request.getIndexInfoId() != null
         ? index.id.eq(request.getIndexInfoId())
         : null;
