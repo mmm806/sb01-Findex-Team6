@@ -29,4 +29,9 @@ public class AutoIntegration {
 
   @Column
   private Boolean enabled; // 활성화 여부
+
+  public AutoIntegration(Index index, Boolean enabled) {
+    this.index = index;
+    this.enabled = enabled;
+  }
 }
