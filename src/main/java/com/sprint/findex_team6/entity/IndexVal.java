@@ -119,7 +119,7 @@ public class IndexVal {
       Double lstgMrktTotAmt) {
 
     this.marketPrice = BigDecimal.valueOf(mkp);
-    this.closePrice = BigDecimal.valueOf(clpr);
+    this.closingPrice = BigDecimal.valueOf(clpr);
     this.highPrice = BigDecimal.valueOf(hipr);
     this.lowPrice = BigDecimal.valueOf(lopr);
     this.versus = BigDecimal.valueOf(vs);
