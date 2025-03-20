@@ -125,15 +125,15 @@ public class SyncDataJobsService {
 
     for (int i = 0; i < indexVals.size() && i < filteredItems.size(); i++) {
       IndexVal indexVal = indexVals.get(i);
-      Long mkp = filteredItems.get(i).path("mkp").asLong(); // 시가
-      Long clpr = filteredItems.get(i).path("clpr").asLong();// 종가
-      Long hipr = filteredItems.get(i).path("hipr").asLong();// 고가
-      Long lopr = filteredItems.get(i).path("lopr").asLong();// 저가
-      Long vs = filteredItems.get(i).path("vs").asLong();// 대비
-      Long fltRt = filteredItems.get(i).path("fltRt").asLong();// 등락률
+      Double mkp = filteredItems.get(i).path("mkp").asDouble(); // 시가
+      Double clpr = filteredItems.get(i).path("clpr").asDouble();// 종가
+      Double hipr = filteredItems.get(i).path("hipr").asDouble();// 고가
+      Double lopr = filteredItems.get(i).path("lopr").asDouble();// 저가
+      Double vs = filteredItems.get(i).path("vs").asDouble();// 대비
+      Double fltRt = filteredItems.get(i).path("fltRt").asDouble();// 등락률
       Long trqu = filteredItems.get(i).path("trqu").asLong();// 거래량
-      Long trPrc = filteredItems.get(i).path("trPrc").asLong();// 거래대금
-      Long lstgMrktTotAmt = filteredItems.get(i).path("lstgMrktTotAmt").asLong();// 상장시가총액
+      Double trPrc = filteredItems.get(i).path("trPrc").asDouble();// 거래대금
+      Double lstgMrktTotAmt = filteredItems.get(i).path("lstgMrktTotAmt").asDouble();// 상장시가총액
 
       IndexVal changedIndexVal = indexVal.changeData(mkp, clpr, hipr, lopr, vs, fltRt, trqu, trPrc,
           lstgMrktTotAmt);
@@ -230,9 +230,6 @@ public class SyncDataJobsService {
           List<String> baseDateList = items.stream()
               .map(item -> item.path("basDt").asText())
               .toList();
-
-          System.out.println("size = " + size);
-          System.out.println("baseDateList = " + baseDateList);
 
           List<SyncJobDto> dtos = createMockSynDataJob(size, httpRequest, syncJobDtoList, baseDateList);
           List<IndexDataLink> indexDataLinks = saveMockDtoToIndexDataLink(dtos, index, httpRequest);

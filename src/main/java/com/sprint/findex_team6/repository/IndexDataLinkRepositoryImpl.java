@@ -67,7 +67,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
 
     boolean hasNext = paged.size() > getSize(request);
 
-    return new SliceImpl<>(paged, slice, hasNext);
+    return new SliceImpl<SyncJobDto>(paged, slice, hasNext);
   }
 
   /**
