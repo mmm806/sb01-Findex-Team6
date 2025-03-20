@@ -5,8 +5,8 @@ import com.sprint.findex_team6.dto.request.AutoSyncConfigCursorPageRequest;
 import com.sprint.findex_team6.dto.request.AutoSyncConfigUpdateRequest;
 import com.sprint.findex_team6.dto.response.CursorPageResponseSyncDto;
 import com.sprint.findex_team6.service.AutoSyncConfigService;
-import java.awt.print.Pageable;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,8 +30,7 @@ public class AutoIntegrationController {
   }
 
   @GetMapping
-  private CursorPageResponseSyncDto<AutoSyncConfigDto> findAutoSyncConfigs(@ModelAttribute AutoSyncConfigCursorPageRequest request,
-      Pageable pageable) {
+  private CursorPageResponseSyncDto<AutoSyncConfigDto> findAutoSyncConfigs(@ModelAttribute AutoSyncConfigCursorPageRequest request, Pageable pageable) {
 
     return autoSyncConfigService.search(request, pageable);
   }
