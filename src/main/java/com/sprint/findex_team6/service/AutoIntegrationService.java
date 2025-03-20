@@ -24,9 +24,12 @@ public class AutoIntegrationService {
 
   public ResponseEntity<?> save(Index index, Boolean enabled){
     AutoIntegration autoIntegration = new AutoIntegration(index,enabled);
+    autoIntegration.setUpdateDate(LocalDate.now());
+
     try{
       autoIntegrationRepository.save(autoIntegration);
     } catch (Exception e){
+      e.printStackTrace();
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
@@ -39,7 +42,8 @@ public class AutoIntegrationService {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
     AutoIntegration autoIntegration = autoIntegrationRepository.findByIndex(index).get();
-    autoIntegration.setEnabled(!autoIntegration.getEnabled());
+    if(autoIntegration.getEnabled()) autoIntegration.setEnabled(false);
+    else autoIntegration.setEnabled(true);
 
     autoIntegrationRepository.save(autoIntegration);
 
