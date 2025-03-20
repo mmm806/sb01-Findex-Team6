@@ -14,8 +14,10 @@ import com.sprint.findex_team6.repository.IndexRepository;
 import jakarta.transaction.Transactional;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
@@ -141,8 +143,19 @@ public class IndexService {
 
 
   public CursorPageResponseIndexInfoDto<IndexInfoDto> getIndexInfos(
-          String indexClassification, String indexName, Boolean favorite, String sortField, String sortDirection,
-          Long idAfter, Pageable pageable) {
+          String indexClassification, String indexName, Boolean favorite, String cursor, Long idAfter,
+          String sortField, String sortDirection, int size, Pageable pageable) {
+
+    // cursor와 idAfter를 동시에 처리하기 위한 로직
+    Long cursorIdAfter = null;
+    if (cursor != null) {
+      cursorIdAfter = decodeCursor(cursor); // cursor를 디코딩하여 idAfter 값 추출
+    }
+
+    // idAfter와 cursor는 동시에 제공되지 않도록 처리하거나, cursor를 우선적으로 사용
+    if (cursorIdAfter == null && idAfter != null) {
+      cursorIdAfter = idAfter; // cursor가 없으면 idAfter 사용
+    }
 
     // 정렬 조건 생성
     Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortField);
@@ -150,12 +163,12 @@ public class IndexService {
 
     // 지수 분류명, 지수명, 즐겨찾기 조건을 반영하여 필터링
     List<Index> indexList;
-    if (idAfter == null) {
-      indexList = indexRepository.findByIndexClassificationContainingAndIndexNameContainingAndFavorite(
+    if (cursorIdAfter == null) {
+      indexList = indexRepository.findByIndexClassificationAndIndexNameAndFavorite(
               indexClassification, indexName, favorite, pageable);
     } else {
-      indexList = indexRepository.findByIdGreaterThanAndIndexClassificationContainingAndIndexNameContainingAndFavorite(
-              idAfter, indexClassification, indexName, favorite, pageable);
+      indexList = indexRepository.findByIdGreaterThanAndIndexClassificationAndIndexNameAndFavorite(
+              cursorIdAfter, indexClassification, indexName, favorite, pageable);
     }
 
     // DTO 변환
@@ -175,15 +188,21 @@ public class IndexService {
             hasNext ? String.valueOf(lastIndexId) : null,  // nextCursor
             lastIndexId,
             pageable.getPageSize(),
-            indexRepository.count(),  // 전체 데이터 수
-            hasNext  // hasNext는 다음 페이지가 있는지 여부
+            indexRepository.count(),
+            hasNext
     );
   }
 
 
+  private String encodeCursor(Long id) {
+    return Base64.getEncoder().encodeToString(id.toString().getBytes(StandardCharsets.UTF_8));
+  }
 
-
-
+  private Long decodeCursor(String cursor) {
+    byte[] decodedBytes = Base64.getDecoder().decode(cursor);
+    String decodedString = new String(decodedBytes, StandardCharsets.UTF_8);
+    return Long.parseLong(decodedString);
+  }
 
   public List<IndexInfoSummaryDto> getIndexSummaries() {
     return indexRepository.findAllProjectBy();
