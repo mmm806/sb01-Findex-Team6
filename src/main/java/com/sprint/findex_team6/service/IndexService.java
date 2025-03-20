@@ -13,8 +13,6 @@ import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,6 +26,7 @@ import org.springframework.stereotype.Service;
 public class IndexService {
   private final IndexMapper indexMapper;
   private final IndexRepository indexRepository;
+  private final SyncJobsService syncJobsService;
 
   public ResponseEntity<?> create(IndexInfoCreateRequest indexInfoCreateRequest){
 
@@ -47,6 +46,7 @@ public class IndexService {
     Index index = new Index(indexClassification, indexName, employedItemsCount, baseDate, baseIndex,
         SourceType.USER, favorite);
     indexRepository.save(index);
+
 
     return ResponseEntity.status(HttpStatus.CREATED).body(indexMapper.toDto(index));
   }
