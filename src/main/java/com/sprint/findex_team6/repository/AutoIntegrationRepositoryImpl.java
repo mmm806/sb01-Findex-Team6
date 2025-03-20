@@ -10,7 +10,6 @@ import com.sprint.findex_team6.dto.AutoSyncConfigDto;
 import com.sprint.findex_team6.dto.QAutoSyncConfigDto;
 import com.sprint.findex_team6.dto.request.AutoSyncConfigCursorPageRequest;
 import com.sprint.findex_team6.entity.QIndex;
-import java.util.Base64;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +24,8 @@ public class AutoIntegrationRepositoryImpl implements AutoIntegrationQuerydslRep
   @Override
   public Slice<AutoSyncConfigDto> cursorBasePagination(AutoSyncConfigCursorPageRequest request, Pageable slice) {
 
+    //boolean enabled = request.enabled() != null;
+
     List<AutoSyncConfigDto> paged = queryFactory
         .select(new QAutoSyncConfigDto(
             autoIntegration.id,
@@ -37,7 +38,7 @@ public class AutoIntegrationRepositoryImpl implements AutoIntegrationQuerydslRep
         .leftJoin(autoIntegration.index, index)
         .where(
             indexInfoIdEq(request),
-            enabledEq(request),
+            enabledEq(request.enabled()),
             cursor(request)
         )
         .orderBy(sortFieldAndDirection(request.sortField(), request.sortDirection()))
@@ -65,9 +66,12 @@ public class AutoIntegrationRepositoryImpl implements AutoIntegrationQuerydslRep
         request.sortDirection() == null || request.sortDirection().isBlank()
             || "desc".equalsIgnoreCase(request.sortDirection());
 
-    String s = new String(Base64.getDecoder().decode(request.cursor()));
+    //String s = new String(Base64.getDecoder().decode(request.cursor()));
 
     Long idAfter = request.idAfter();
+    if (idAfter == null) {
+      return null;
+    }
 
     if(sortField.equals("enable")) { // 활성화 여부로 정렬
       // 뭐로 커서 페이징해야하는지 모르겠어서 일단 활성화 여부를 커서로 지정
@@ -170,7 +174,7 @@ public class AutoIntegrationRepositoryImpl implements AutoIntegrationQuerydslRep
   private Long getSize(Integer size) {
     return size != null
         ? Long.valueOf(size)
-        : null;
+        : 10;
   }
 
   /**
@@ -179,9 +183,9 @@ public class AutoIntegrationRepositoryImpl implements AutoIntegrationQuerydslRep
   * @author : wongil
   * @Description: request enabled에 따라 원하는 데이터 뽑기
   **/
-  private BooleanExpression enabledEq(AutoSyncConfigCursorPageRequest request) {
+  private BooleanExpression enabledEq(Boolean enabled) {
 
-    return autoIntegration.enabled.eq(request.enabled());
+    return enabled != null ? autoIntegration.enabled.eq(enabled) : null;
   }
 
   /**

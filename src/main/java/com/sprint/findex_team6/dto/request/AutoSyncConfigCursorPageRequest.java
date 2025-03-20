@@ -2,7 +2,7 @@ package com.sprint.findex_team6.dto.request;
 
 public record AutoSyncConfigCursorPageRequest(
     Long indexInfoId,
-    boolean enabled,
+    Boolean enabled,
     Long idAfter,
     String cursor,
     String sortField,
