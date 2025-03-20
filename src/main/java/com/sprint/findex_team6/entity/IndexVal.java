@@ -107,10 +107,10 @@ public class IndexVal {
   * @author : wongil
   * @Description: IndexVal 거래와 관련된 데이터를 설정하기 위한 메서드
   **/
-  public IndexVal changeData(Long mkp, Long clpr, Long hipr, Long lopr, Long vs, Long fltRt,
+  public IndexVal changeData(Double mkp, Double clpr, Double hipr, Double lopr, Double vs, Double fltRt,
       Long trqu,
-      Long trPrc,
-      Long lstgMrktTotAmt) {
+      Double trPrc,
+      Double lstgMrktTotAmt) {
 
     this.marketPrice = BigDecimal.valueOf(mkp);
     this.closePrice = BigDecimal.valueOf(clpr);
