@@ -5,6 +5,7 @@ import com.sprint.findex_team6.entity.IndexVal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -21,4 +22,5 @@ public interface IndexValRepository extends JpaRepository<IndexVal, Long>{
 
   List<IndexVal> findByIndexAndBaseDateBetweenOrderByBaseDateAsc(Index index, LocalDate startDate, LocalDate endDate);
 
+  List<IndexVal> findByIndexIdAndBaseDateBetween(Long indexId, LocalDate startDate, LocalDate endDate, Sort sort);
 }

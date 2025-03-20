@@ -1,5 +1,6 @@
 package com.sprint.findex_team6.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -39,6 +40,7 @@ public class IndexVal {
   private BigDecimal fluctuationRate; // 등락률
   private Long tradingQuantity;             // 거래량
   private BigDecimal tradingPrice; // 거래대금
+  @Column(name = "market_total_amount")
   private BigDecimal marketTotalCount;    // 상장 시가 총액
 
 

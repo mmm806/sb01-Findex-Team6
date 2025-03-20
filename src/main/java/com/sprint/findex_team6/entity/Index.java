@@ -1,5 +1,6 @@
 package com.sprint.findex_team6.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -25,6 +26,7 @@ public class Index {
   private String indexClassification;  // 지수 분류명
   private String indexName;     // 지수명
   private Integer employedItemsCount; // 채용 종목 수
+  @Column(name = "base_point_in_time")
   private LocalDate baseDate;    // 기준 시점
   private BigDecimal baseIndex; // 기준 지수
 
