@@ -7,7 +7,6 @@ import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface IndexMapper {
-
   @Mapping(source = "baseDate", target = "basePointInTime")
   IndexInfoDto toDto(Index index);
 }

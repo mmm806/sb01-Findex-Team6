@@ -1,11 +1,8 @@
 package com.sprint.findex_team6.dto;
 
+import lombok.Data;
 
-import lombok.Getter;
-import lombok.Setter;
-
-@Getter
-@Setter
+@Data
 public class AutoIntegrationDto {
     private Long id;
 

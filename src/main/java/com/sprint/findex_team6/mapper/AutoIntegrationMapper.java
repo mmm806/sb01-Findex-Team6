@@ -8,6 +8,8 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface AutoIntegrationMapper {
 
+    @Mapping(source = "id", target = "id")
     @Mapping(source = "index.id", target = "indexId")
+    @Mapping(source = "enabled", target = "enabled")
     AutoIntegrationDto toDto(AutoIntegration entity);
 }
