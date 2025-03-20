@@ -20,6 +20,12 @@ public class AutoSyncConfigService {
 
   private final AutoIntegrationRepository autoIntegrationRepository;
 
+  /**
+  * @methodName : modify
+  * @date : 2025-03-20 오전 11:19
+  * @author : wongil
+  * @Description: 자동 연동 설정 수정
+  **/
   public AutoSyncConfigDto modify(AutoSyncConfigUpdateRequest request, Long id) {
 
     AutoIntegration autoIntegration = autoIntegrationRepository.findById(id)
@@ -36,6 +42,12 @@ public class AutoSyncConfigService {
   }
 
 
+  /**
+  * @methodName : search
+  * @date : 2025-03-20 오전 11:19
+  * @author : wongil
+  * @Description: 자동 연동 설정 목록 조회
+  **/
   public CursorPageResponseSyncDto<AutoSyncConfigDto> search(
       AutoSyncConfigCursorPageRequest request, Pageable slice) {
 

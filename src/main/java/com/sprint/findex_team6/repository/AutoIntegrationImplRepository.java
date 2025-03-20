@@ -79,6 +79,12 @@ public class AutoIntegrationImplRepository implements AutoIntegrationQuerydslRep
     }
   }
 
+  /**
+  * @methodName : getIndexInfoNameBaseCondition
+  * @date : 2025-03-20 오전 11:19
+  * @author : wongil
+  * @Description: 정렬 필드가 indexInfo.indexName으로 들어오면 어떻게 페이징할 것 인지
+  **/
   private BooleanExpression getIndexInfoNameBaseCondition(String indexInfoNameBaseCursor, Long idAfter, boolean isDesc) {
     BooleanExpression nextId = null;
     BooleanExpression baseCondition = null;
@@ -102,15 +108,21 @@ public class AutoIntegrationImplRepository implements AutoIntegrationQuerydslRep
     return baseCondition.and(nextId);
   }
 
+  /**
+  * @methodName : getEnableBaseCondition
+  * @date : 2025-03-20 오전 11:20
+  * @author : wongil
+  * @Description: 정렬 필드가 enabled로 들어오면 어떻게 페이징할 것 인지
+  **/
   private BooleanExpression getEnableBaseCondition(Boolean enabledBaseCursor, Long idAfter, boolean isDesc) {
     BooleanExpression nextId = null;
     BooleanExpression baseCondition = null;
 
     if (isDesc) {
-      baseCondition = autoIntegration.enabled.loe(enabledBaseCursor);
+      baseCondition = autoIntegration.enabled.loe(enabledBaseCursor); // true면 true보다 작은 false가 내려옴
     }
     else {
-      baseCondition = autoIntegration.enabled.goe(enabledBaseCursor);
+      baseCondition = autoIntegration.enabled.goe(enabledBaseCursor); // true면 true보다 큰 true만
     }
 
     if (idAfter != null) {
