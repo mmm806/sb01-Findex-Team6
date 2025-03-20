@@ -170,7 +170,7 @@ public class SyncDataJobsService {
             jobDtoList
                 .stream()
                 .flatMap(dto ->
-                    indexValRepository.findAllByIndex_IdAndDate(index.getId(), dto.getTargetDate())
+                    indexValRepository.findAllByIndex_IdAndBaseDate(index.getId(), dto.getTargetDate())
                         .stream())
         )
         .toList();
