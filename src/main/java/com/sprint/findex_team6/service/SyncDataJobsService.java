@@ -148,6 +148,12 @@ public class SyncDataJobsService {
 
   }
 
+  /**
+  * @methodName : isExistsIndexDataLink
+  * @date : 2025-03-20 오후 3:44
+  * @author : wongil
+  * @Description: baseDate와 indexId의 조합이 같으면 true
+  **/
   private boolean isExistsIndexDataLink(String basDt, IndexVal indexVal) {
     LocalDate localDate = LocalDate.parse(basDt, DateTimeFormatter.ofPattern("yyyyMMdd"));
 
@@ -296,10 +302,17 @@ public class SyncDataJobsService {
     return indexVals;
   }
 
+  /**
+  * @methodName : isExistsIndexDataLink
+  * @date : 2025-03-20 오후 3:44
+  * @author : wongil
+  * @Description: dataLink의 targetDate와 indexId 조합이 없으면 true
+  **/
   private boolean isExistsIndexDataLink(List<IndexDataLink> indexDataLinks, Index index) {
     List<LocalDate> list = indexDataLinks.stream()
         .map(IndexDataLink::getTargetDate)
         .toList();
+
     List<IndexDataLink> byIndexIdAndTargetDateIn = indexDataLinkRepository.findByIndex_IdAndTargetDateIn(
         index.getId(), list);
 
@@ -496,6 +509,12 @@ public class SyncDataJobsService {
     return indexDataLinkRepository.saveAll(links);
   }
 
+  /**
+  * @methodName : isExistsIndexDateLink
+  * @date : 2025-03-20 오후 3:43
+  * @author : wongil
+  * @Description: index와 날짜 조합이 없으면 true
+  **/
   private boolean isExistsIndexDateLink(List<SyncJobDto> dtos, Index index) {
     List<LocalDate> list = dtos.stream()
         .map(SyncJobDto::getTargetDate)
