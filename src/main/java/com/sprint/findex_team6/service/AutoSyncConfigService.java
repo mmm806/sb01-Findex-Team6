@@ -6,7 +6,10 @@ import com.sprint.findex_team6.dto.request.AutoSyncConfigUpdateRequest;
 import com.sprint.findex_team6.dto.response.CursorPageResponseSyncDto;
 import com.sprint.findex_team6.entity.AutoIntegration;
 import com.sprint.findex_team6.repository.AutoIntegrationRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,11 +37,46 @@ public class AutoSyncConfigService {
 
 
   public CursorPageResponseSyncDto<AutoSyncConfigDto> search(
-      AutoSyncConfigCursorPageRequest request) {
+      AutoSyncConfigCursorPageRequest request, Pageable slice) {
 
-    AutoSyncConfigDto paged = autoIntegrationRepository.cursorBasePagination(request)
-        .orElseThrow(() -> new RuntimeException("페이징에 실패했습니다."));
+    Slice<AutoSyncConfigDto> pagedData = autoIntegrationRepository.cursorBasePagination(
+        request, slice);
 
-    return null;
+    List<AutoSyncConfigDto> content = pagedData.getContent();
+
+    int size = request.size() == null ? 10 : request.size();
+
+    long totalElements = autoIntegrationRepository.count();
+    boolean hasNext = pagedData.hasNext();
+
+    Long nextIdAfter = null;
+    String nextCursor = null;
+    Boolean enableBaseNextCursor = null;
+    if (hasNext && !content.isEmpty()) {
+      AutoSyncConfigDto lastContent = content.get(size - 1);
+      nextIdAfter = lastContent.getId();
+
+      if (request.sortField() != null) {
+        if (request.sortField().equals("enable")) {
+          enableBaseNextCursor = Boolean.valueOf(request.cursor());
+        }
+        else {
+          nextCursor = request.cursor();
+        }
+      }
+    }
+
+    return new CursorPageResponseSyncDto<>(
+        content,
+        getNextCursor(nextCursor, enableBaseNextCursor),
+        nextIdAfter,
+        size,
+        totalElements,
+        hasNext
+    );
+  }
+
+  private String getNextCursor(String nextCursor, Boolean enableBaseNextCursor) {
+    return nextCursor != null ? nextCursor : String.valueOf(enableBaseNextCursor);
   }
 }

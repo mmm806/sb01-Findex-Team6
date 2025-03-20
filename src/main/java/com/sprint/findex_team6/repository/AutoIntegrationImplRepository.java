@@ -12,6 +12,9 @@ import com.sprint.findex_team6.dto.request.AutoSyncConfigCursorPageRequest;
 import com.sprint.findex_team6.entity.QIndex;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 
 @RequiredArgsConstructor
 public class AutoIntegrationImplRepository implements AutoIntegrationQuerydslRepository {
@@ -19,9 +22,9 @@ public class AutoIntegrationImplRepository implements AutoIntegrationQuerydslRep
   private final JPAQueryFactory queryFactory;
 
   @Override
-  public List<AutoSyncConfigDto> cursorBasePagination(AutoSyncConfigCursorPageRequest request) {
+  public Slice<AutoSyncConfigDto> cursorBasePagination(AutoSyncConfigCursorPageRequest request, Pageable slice) {
 
-    return queryFactory
+    List<AutoSyncConfigDto> paged = queryFactory
         .select(new QAutoSyncConfigDto(
             autoIntegration.id,
             index.id,
@@ -39,6 +42,10 @@ public class AutoIntegrationImplRepository implements AutoIntegrationQuerydslRep
         .orderBy(sortFieldAndDirection(request.sortField(), request.sortDirection()))
         .limit(getSize(request.size()) + 1) // 커서 페이징을 위해서 1번 더 쿼리
         .fetch();
+
+    boolean hasNext = paged.size() > getSize(request.size());
+
+    return new SliceImpl<>(paged, slice, hasNext);
   }
 
   /**

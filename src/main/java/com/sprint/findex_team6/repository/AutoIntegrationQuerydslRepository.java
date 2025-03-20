@@ -2,9 +2,10 @@ package com.sprint.findex_team6.repository;
 
 import com.sprint.findex_team6.dto.AutoSyncConfigDto;
 import com.sprint.findex_team6.dto.request.AutoSyncConfigCursorPageRequest;
-import java.util.List;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 
 public interface AutoIntegrationQuerydslRepository {
 
-  List<AutoSyncConfigDto> cursorBasePagination(AutoSyncConfigCursorPageRequest request);
+  Slice<AutoSyncConfigDto> cursorBasePagination(AutoSyncConfigCursorPageRequest request, Pageable slice);
 }

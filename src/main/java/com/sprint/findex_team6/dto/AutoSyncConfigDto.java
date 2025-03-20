@@ -2,8 +2,10 @@ package com.sprint.findex_team6.dto;
 
 import com.querydsl.core.annotations.QueryProjection;
 import lombok.Builder;
+import lombok.Data;
 
 @Builder
+@Data
 public class AutoSyncConfigDto {
   Long id;
   Long indexInfoId;
