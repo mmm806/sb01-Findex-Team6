@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
 * @Description: JPAQueryFactory 생성자로 주입 받기 코드 일일히 작성하기 싫어서 Bean에 등록
 **/
 @Configuration
-public class QuerydslConfig {
+public class QueryDSLConfig {
 
   @Bean
   JPAQueryFactory jpaQueryFactory(EntityManager em) {

@@ -36,7 +36,7 @@ CREATE TABLE index (
 CREATE TABLE index_val (
                            id BIGSERIAL PRIMARY KEY,
                            index_id BIGINT NOT NULL REFERENCES index(id) ON DELETE CASCADE,
-                           baseDate DATE NOT NULL,
+                           base_date DATE NOT NULL,
                            source_type source_type NOT NULL,
                            market_price NUMERIC NOT NULL,
                            close_price NUMERIC NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE index_val (
                            trading_quantity BIGINT NOT NULL,
                            trading_price NUMERIC NOT NULL,
                            market_total_amount NUMERIC NOT NULL,
-                           UNIQUE (index_id,baseDate)
+                           UNIQUE (index_id,base_date)
 );
 
 CREATE TABLE index_data_link (
