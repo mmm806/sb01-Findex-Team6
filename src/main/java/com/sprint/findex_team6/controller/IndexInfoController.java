@@ -11,7 +11,9 @@ import com.sprint.findex_team6.service.IndexService;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -50,18 +52,19 @@ public class IndexInfoController {
           @RequestParam(required = false) String indexClassification,
           @RequestParam(required = false) String indexName,
           @RequestParam(required = false) Boolean favorite,
-          @RequestParam(required = false) String cursor,  // 커서
-          @RequestParam(required = false) Long idAfter,  // idAfter와 cursor 둘 중 하나를 사용할 수 있음
+          @RequestParam(required = false) String cursor,
+          @RequestParam(required = false) Long idAfter,
           @RequestParam(defaultValue = "indexClassification") String sortField,
           @RequestParam(defaultValue = "asc") String sortDirection,
-          @RequestParam(defaultValue = "10") int size,  // 페이지 크기 (기본값 10)
-          Pageable pageable
+          @RequestParam(defaultValue = "10") int size  // 페이지 크기 (기본값 10)
   ) {
-    // idAfter 또는 cursor가 있으면 커서 기반 페이지네이션을 처리하고, 없으면 페이지 번호 기반 처리
-    CursorPageResponseIndexInfoDto<IndexInfoDto> response = indexService.getIndexInfos(
-            indexClassification, indexName, favorite, cursor, idAfter, sortField, sortDirection, size, pageable
-    );
-    return ResponseEntity.status(HttpStatus.OK).body(response);
+    Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortField);
+    Pageable pageable = PageRequest.of(0, size, sort);
+
+    CursorPageResponseIndexInfoDto<IndexInfoDto> response =
+            indexService.getIndexInfos(indexClassification, indexName, favorite, cursor, idAfter, sortField, sortDirection, size, pageable);
+
+    return ResponseEntity.ok(response);
   }
 
 

@@ -3,6 +3,9 @@ package com.sprint.findex_team6.mapper;
 import com.sprint.findex_team6.dto.CursorPageResponse;
 import com.sprint.findex_team6.dto.IndexDataDto;
 import java.util.List;
+
+import com.sprint.findex_team6.dto.IndexInfoDto;
+import com.sprint.findex_team6.dto.response.CursorPageResponseIndexInfoDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Order;
@@ -34,6 +37,32 @@ public class CursorPageResponseMapper {
         page.getSize(),
         page.getTotalElements(),
         page.hasNext()
+    );
+  }
+
+  public CursorPageResponseIndexInfoDto<IndexInfoDto> fromPageIndexInfoDto(Page<IndexInfoDto> page) {
+    List<IndexInfoDto> content = page.getContent();
+    Sort sort = page.getSort();
+    Object nextCursor = null;
+    Long nextIdAfter = null;
+
+    if (!content.isEmpty()) {
+      Order order = sort.iterator().next();
+      if (order.getProperty().equals("indexClassification")) {
+        nextCursor = content.get(content.size() - 1).indexClassification();
+      } else if (order.getProperty().equals("indexName")) {
+        nextCursor = content.get(content.size() - 1).indexName();
+      }
+      nextIdAfter = content.get(content.size() - 1).id();
+    }
+
+    return new CursorPageResponseIndexInfoDto<>(
+            content,
+            nextCursor,
+            nextIdAfter,
+            page.getSize(),
+            page.getTotalElements(),
+            page.hasNext()
     );
   }
 
