@@ -61,7 +61,7 @@ public class IndexValController {
     List<RankedIndexPerformanceDto> dto;
 
     if(indexInfoId == null) {
-      dto = indexValService.getIndexPerformanceRank(periodType, limit);
+      dto = indexValService.getIndexPerformanceRank(periodType, null, limit);
     } else {
       dto = indexValService.getIndexPerformanceRank(periodType, indexInfoId, limit);
     }
