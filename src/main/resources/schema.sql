@@ -36,7 +36,7 @@ CREATE TABLE index (
 CREATE TABLE index_val (
                            id BIGSERIAL PRIMARY KEY,
                            index_id BIGINT NOT NULL REFERENCES index(id) ON DELETE CASCADE,
-                           baseDate DATE NOT NULL,
+                           base_date DATE NOT NULL,
                            source_type source_type NOT NULL,
                            market_price NUMERIC NOT NULL,
                            close_price NUMERIC NOT NULL,
