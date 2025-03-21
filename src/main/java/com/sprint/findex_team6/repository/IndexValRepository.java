@@ -19,11 +19,11 @@ import org.springframework.stereotype.Repository;
 public interface IndexValRepository extends JpaRepository<IndexVal, Long> {
 
   List<IndexVal> findByIndex_Id(Long id);
-  
+
+  boolean existsByIndex_IdIn(List<Long> ids);
+
   //Dashboard
   List<IndexVal> findByIndexIdInAndBaseDateIn(List<Long> indexIds, List<LocalDate> startDate);
-
-
 
   List<IndexVal> findByIndexInAndBaseDateIn(List<Index> indexList, List<LocalDate> startDate);
 
