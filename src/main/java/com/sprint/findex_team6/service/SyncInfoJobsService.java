@@ -6,11 +6,11 @@ import com.sprint.findex_team6.entity.ContentType;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexDataLink;
 import com.sprint.findex_team6.entity.SourceType;
-import com.sprint.findex_team6.exception.NotFoundException;
 import com.sprint.findex_team6.exception.syncjobs.DuplicateIndexException;
-import com.sprint.findex_team6.exception.syncjobs.NotFoundIndexException;
-import com.sprint.findex_team6.exception.syncjobs.SyncFailedException;
 import com.sprint.findex_team6.exception.syncjobs.FailedCallOpenApiException;
+import com.sprint.findex_team6.exception.syncjobs.NotFoundIndexException;
+import com.sprint.findex_team6.exception.syncjobs.NotFoundItemException;
+import com.sprint.findex_team6.exception.syncjobs.SyncFailedException;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
 import com.sprint.findex_team6.repository.IndexRepository;
 import com.sprint.findex_team6.service.util.SyncJobUtils;
@@ -75,6 +75,11 @@ public class SyncInfoJobsService {
     JsonNode items = SyncJobUtils.findItems(response);
 
     int totalCount = SyncJobUtils.getTotalCount(items);
+
+    if (totalCount == 0) {
+      return returnAlreadySyncJobData();
+    }
+
     int numOfRows = SyncJobUtils.getNumOfRows(items);
     int totalPages = SyncJobUtils.getTotalPages(items);
 
@@ -92,6 +97,40 @@ public class SyncInfoJobsService {
     return mockList;
   }
 
+  /**
+  * @methodName : returnAlreadySyncJobData
+  * @date : 2025-03-21 오전 10:43
+  * @author : wongil
+  * @Description: 만약 OPEN API 호출 시 결과가 없고 db에 index data link가 있으면 바로 반환
+  **/
+  private List<SyncJobDto> returnAlreadySyncJobData() {
+    List<IndexDataLink> links = indexDataLinkRepository.findAll();
+
+    if (!links.isEmpty()) {
+      return links.stream()
+          .map(link ->
+              SyncJobDto.builder()
+                  .id(link.getId())
+                  .indexInfoId(link.getIndex().getId())
+                  .jobType(link.getJobType())
+                  .targetDate(null)
+                  .worker(link.getWorker())
+                  .jobTime(link.getJobTime())
+                  .result(link.getResult() ? "SUCCESS" : "FAILED")
+                  .build()
+          )
+          .toList();
+    }
+
+    return null;
+  }
+
+  /**
+  * @methodName : validDuplicatedIndex
+  * @date : 2025-03-21 오전 10:26
+  * @author : wongil
+  * @Description: 지수 정보 중복 저장 되는거 방지
+  **/
   private void validDuplicatedIndex(String response) {
     JsonNode items = getItems(response);
 
@@ -270,17 +309,6 @@ public class SyncInfoJobsService {
   }
 
   /**
-   * @methodName : findIndex
-   * @date : 2025-03-17 오후 11:06
-   * @author : wongil
-   * @Description: indexRepository에서 id로 꺼내기
-   **/
-  private Index findIndex(Long indexInfoId) {
-    return indexRepository.findById(indexInfoId)
-        .orElseThrow(() -> new NotFoundException("Not found Index!!"));
-  }
-
-  /**
    * @methodName : isSuccessOrFail
    * @date : 2025-03-17 오후 11:05
    * @author : wongil
@@ -436,13 +464,18 @@ public class SyncInfoJobsService {
    * @Description: api reponse body의 item 배열만 뽑기
    **/
   private JsonNode getItems(String response) {
-    return SyncJobUtils.findItems(response)
+    JsonNode path = SyncJobUtils.findItems(response)
         .path("response")
         .path("body")
         .path("items")
         .path("item");
-  }
 
+    if (path == null) {
+      throw new NotFoundItemException();
+    }
+
+    return path;
+  }
 
   /**
    * @methodName : getAllInfosByCallOpenApi

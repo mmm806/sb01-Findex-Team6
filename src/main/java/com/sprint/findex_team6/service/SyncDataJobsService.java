@@ -395,11 +395,18 @@ public class SyncDataJobsService {
    * @Description: json 응답 바디에서 item 배열만 뽑기
    **/
   private JsonNode getItem(JsonNode json) {
-    return json
+    JsonNode path = json
         .path("response")
         .path("body")
         .path("items")
         .path("item");
+
+    if (path == null) {
+      throw new NotFoundItemException();
+    }
+
+
+    return path;
   }
 
   /**
