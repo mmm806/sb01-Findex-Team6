@@ -18,4 +18,6 @@ public interface AutoIntegrationRepository extends JpaRepository<AutoIntegration
   @NonNull
   @Override
   Optional<AutoIntegration> findById(@NonNull Long id);
+
+  void deleteByIndex_Id(Long indexId);
 }
