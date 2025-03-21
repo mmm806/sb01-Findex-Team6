@@ -47,7 +47,7 @@ CREATE TABLE index_val (
                            trading_quantity BIGINT NOT NULL,
                            trading_price NUMERIC NOT NULL,
                            market_total_amount NUMERIC NOT NULL,
-                           UNIQUE (index_id,baseDate)
+                           UNIQUE (index_id,base_date)
 );
 
 CREATE TABLE index_data_link (
