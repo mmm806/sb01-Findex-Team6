@@ -19,13 +19,11 @@ import org.springframework.stereotype.Repository;
 public interface IndexValRepository extends JpaRepository<IndexVal, Long> {
 
   List<IndexVal> findByIndex_Id(Long id);
-  
+
+  boolean existsByIndex_IdIn(List<Long> ids);
+
   //Dashboard
   List<IndexVal> findByIndexIdInAndBaseDateIn(List<Long> indexIds, List<LocalDate> startDate);
-
-  boolean existsByIndexIdAndBaseDate(Long indexId, LocalDate localDate);
-
-  Optional<IndexVal> findByIndexAndBaseDate(Index index, LocalDate baseDate);
 
   List<IndexVal> findByIndexInAndBaseDateIn(List<Index> indexList, List<LocalDate> startDate);
 
@@ -34,8 +32,6 @@ public interface IndexValRepository extends JpaRepository<IndexVal, Long> {
   List<IndexVal> findByIndexIdAndBaseDateBetween(Long indexId, LocalDate startDate, LocalDate endDate, Sort sort);
 
   Optional<IndexVal> findByIndex_IdAndBaseDate(Long index_id, LocalDate baseDate);
-
-  Optional<IndexVal> findAllByIndex_IdAndBaseDate(Long indexId, LocalDate date);
   
   Page<IndexVal> findByIndex_IdAndBaseDateBetween(
       Long indexId, LocalDate startDate, LocalDate endDate,

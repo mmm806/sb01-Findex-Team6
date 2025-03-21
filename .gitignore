@@ -5,9 +5,9 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 application.yml
-src/main/resources
 
 ### STS ###
+openapi.json
 .apt_generated
 .classpath
 .factorypath

@@ -9,6 +9,11 @@ import com.sprint.findex_team6.entity.ContentType;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexDataLink;
 import com.sprint.findex_team6.entity.IndexVal;
+import com.sprint.findex_team6.exception.syncjobs.DuplicateIndexException;
+import com.sprint.findex_team6.exception.syncjobs.NotFoundIndeValException;
+import com.sprint.findex_team6.exception.syncjobs.NotFoundIndexException;
+import com.sprint.findex_team6.exception.syncjobs.NotFoundItemException;
+import com.sprint.findex_team6.exception.syncjobs.SyncFailedException;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
 import com.sprint.findex_team6.repository.IndexRepository;
 import com.sprint.findex_team6.repository.IndexValRepository;
@@ -88,6 +93,12 @@ public class SyncDataJobsService {
     return dummyResponse;
   }
 
+  /**
+  * @methodName : getItems
+  * @date : 2025-03-21 오전 9:49
+  * @author : wongil
+  * @Description: OPENAPI에서 지수 분류명으로 데이터 가져오기
+  **/
   private List<JsonNode> getItems(IndexDataSyncRequest request, List<Index> indexList) {
     List<String> names = indexList.stream()
         .map(Index::getIndexName)
@@ -106,7 +117,7 @@ public class SyncDataJobsService {
     CompletableFuture.runAsync(() -> {
       try {
         process(indexList, jobDtoList, items);
-      } catch (Exception e) {
+      } catch (SyncFailedException e) {
         log.error("Async error!!", e);
       }
     });
@@ -134,11 +145,6 @@ public class SyncDataJobsService {
       Long trqu = filteredItems.get(i).path("trqu").asLong();// 거래량
       Double trPrc = filteredItems.get(i).path("trPrc").asDouble();// 거래대금
       Double lstgMrktTotAmt = filteredItems.get(i).path("lstgMrktTotAmt").asDouble();// 상장시가총액
-      String basDt = filteredItems.get(i).path("basDt").asText();// 가져온 데이터 날짜
-
-      if (isExistsIndexDataLink(basDt, indexVal)) {
-        continue;
-      }
 
       IndexVal changedIndexVal = indexVal.changeData(mkp, clpr, hipr, lopr, vs, fltRt, trqu, trPrc,
           lstgMrktTotAmt);
@@ -149,31 +155,24 @@ public class SyncDataJobsService {
   }
 
   /**
-  * @methodName : isExistsIndexDataLink
-  * @date : 2025-03-20 오후 3:44
-  * @author : wongil
-  * @Description: baseDate와 indexId의 조합이 같으면 true
-  **/
-  private boolean isExistsIndexDataLink(String basDt, IndexVal indexVal) {
-    LocalDate localDate = LocalDate.parse(basDt, DateTimeFormatter.ofPattern("yyyyMMdd"));
-
-    return indexDataLinkRepository.findFirstByIndex_IdAndTargetDate(indexVal.getIndex().getId(), localDate)
-        .isPresent();
-  }
-
-  /**
   * @methodName : filterItemsByClassificationName
   * @date : 2025-03-19 오후 2:25
   * @author : wongil
   * @Description: 지수 분류명으로 특정 item만 필터링
   **/
   private List<JsonNode> filterItemsByClassificationName(List<Index> indexList, List<JsonNode> allItems) {
-    return indexList.stream()
+    List<JsonNode> itemList = indexList.stream()
         .flatMap(index ->
             allItems.stream()
                 .filter(item -> item.path("idxCsf").asText().equals(index.getIndexClassification()))
         )
         .toList();
+
+    if (itemList.isEmpty()) {
+      throw new NotFoundItemException();
+    }
+
+    return itemList;
   }
 
   /**
@@ -183,14 +182,21 @@ public class SyncDataJobsService {
   * @Description: index.id와 targetDate로 해당하는 IndexVal 찾기
   **/
   private List<IndexVal> findIndexValListByIndexIdAndTargetDate(List<Index> indexList, List<SyncJobDto> jobDtoList) {
-    return indexList.stream()
+    List<IndexVal> indexValList = indexList.stream()
         .flatMap(index ->
             jobDtoList.stream()
                 .flatMap(dto ->
-                    indexValRepository.findAllByIndex_IdAndBaseDate(index.getId(), dto.getTargetDate())
+                    indexValRepository.findAllByIndex_IdAndBaseDate(index.getId(),
+                            dto.getTargetDate())
                         .stream())
         )
         .toList();
+
+    if (indexList.isEmpty()) {
+      throw new NotFoundIndeValException();
+    }
+
+    return indexValList;
   }
 
   /**
@@ -203,7 +209,7 @@ public class SyncDataJobsService {
 
     List<Index> indexList = findAllIndexList(request.indexInfoIds());
     if (indexList == null || indexList.isEmpty()) {
-      throw new RuntimeException("지수 정보가 없습니다.");
+      throw new NotFoundIndexException("지수 정보가 없습니다.");
     }
 
     return indexList;
@@ -222,7 +228,7 @@ public class SyncDataJobsService {
         .map(Index::getIndexName)
         .distinct()
         .toList();
-    
+
     return filterItems(indexList,
         getAllItems(getJsonNodeList(request, indexNames)));
   }
@@ -272,12 +278,6 @@ public class SyncDataJobsService {
 
     List<IndexVal> indexVals = new ArrayList<>();
 
-    boolean existsIndexDataLink = isExistsIndexDataLink(indexDataLinks, index);
-
-    if (!existsIndexDataLink) {
-      return indexValRepository.findAll();
-    }
-
     for (int i = 0; i < size; i++) {
       IndexVal indexVal = new IndexVal(
           indexDataLinks.get(i).getTargetDate(),
@@ -297,26 +297,18 @@ public class SyncDataJobsService {
       indexVals.add(indexVal);
     }
 
+    List<Long> valIndexIds = indexVals.stream()
+        .map(val -> val.getIndex().getId())
+        .toList();
+
+    boolean isExistsId = indexValRepository.existsByIndex_IdIn(valIndexIds);
+    if (isExistsId) {
+      throw new DuplicateIndexException();
+    }
+
     indexValRepository.saveAll(indexVals);
 
     return indexVals;
-  }
-
-  /**
-  * @methodName : isExistsIndexDataLink
-  * @date : 2025-03-20 오후 3:44
-  * @author : wongil
-  * @Description: dataLink의 targetDate와 indexId 조합이 없으면 true
-  **/
-  private boolean isExistsIndexDataLink(List<IndexDataLink> indexDataLinks, Index index) {
-    List<LocalDate> list = indexDataLinks.stream()
-        .map(IndexDataLink::getTargetDate)
-        .toList();
-
-    List<IndexDataLink> byIndexIdAndTargetDateIn = indexDataLinkRepository.findByIndex_IdAndTargetDateIn(
-        index.getId(), list);
-
-    return byIndexIdAndTargetDateIn.isEmpty();
   }
 
   /**
@@ -403,11 +395,18 @@ public class SyncDataJobsService {
    * @Description: json 응답 바디에서 item 배열만 뽑기
    **/
   private JsonNode getItem(JsonNode json) {
-    return json
+    JsonNode path = json
         .path("response")
         .path("body")
         .path("items")
         .path("item");
+
+    if (path == null) {
+      throw new NotFoundItemException();
+    }
+
+
+    return path;
   }
 
   /**
@@ -486,10 +485,6 @@ public class SyncDataJobsService {
 
     List<IndexDataLink> links = new ArrayList<>();
 
-    if (!isExistsIndexDateLink(dtos, index)) {
-      return indexDataLinkRepository.findAll();
-    }
-
     dtos
         .forEach(dto -> {
 
@@ -507,23 +502,6 @@ public class SyncDataJobsService {
         });
 
     return indexDataLinkRepository.saveAll(links);
-  }
-
-  /**
-  * @methodName : isExistsIndexDateLink
-  * @date : 2025-03-20 오후 3:43
-  * @author : wongil
-  * @Description: index와 날짜 조합이 없으면 true
-  **/
-  private boolean isExistsIndexDateLink(List<SyncJobDto> dtos, Index index) {
-    List<LocalDate> list = dtos.stream()
-        .map(SyncJobDto::getTargetDate)
-        .toList();
-
-    List<IndexDataLink> byIndexIdAndTargetDateIn = indexDataLinkRepository.findByIndex_IdAndTargetDateIn(
-        index.getId(), list);
-
-    return byIndexIdAndTargetDateIn.isEmpty();
   }
 
 

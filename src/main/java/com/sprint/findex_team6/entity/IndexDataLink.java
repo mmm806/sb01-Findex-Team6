@@ -36,13 +36,14 @@ public class IndexDataLink {
   @JdbcTypeCode(SqlTypes.NAMED_ENUM)
   private ContentType jobType;              // 유형 ("지수 정보", "지수 데이터")
 
+
   // 연동된 지수 정보
   private LocalDate targetDate;     // 연동된 데이터의 날짜
   private String worker;          // 작업자 (요청 IP 또는 "system")
   private LocalDateTime jobTime; // 작업일시
   private Boolean result;            // 결과 ("성공", "실패")
 
- 
+  //지수 정보
   @ManyToOne(fetch = FetchType.LAZY) //하나의 지수 정보는 여러번 연동 작업을 함
   @JoinColumn(name = "index_id")
   private Index index; //연동된 지수 정보

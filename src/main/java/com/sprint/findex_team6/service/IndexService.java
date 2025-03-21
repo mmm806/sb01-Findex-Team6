@@ -60,6 +60,12 @@ public class IndexService {
     Index index = new Index(indexClassification, indexName, employedItemsCount, baseDate, baseIndex,
         SourceType.USER, favorite);
     indexRepository.save(index);
+    ResponseEntity<?> response= autoIntegrationService.save(index,false);
+    if(response.getStatusCode().isSameCodeAs(HttpStatus.INTERNAL_SERVER_ERROR)){
+      ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(),HttpStatus.BAD_REQUEST.value(),"서버 오류입니다.", "자동 연동에 실패하였습니다.");
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
 
     return ResponseEntity.status(HttpStatus.CREATED).body(indexMapper.toDto(index));
   }
@@ -101,6 +107,7 @@ public class IndexService {
 
   public ResponseEntity<Void> delete(Long id){
     if(indexRepository.findById(id).isPresent()){
+      autoIntegrationService.delete(id);
       indexRepository.deleteById(id);
       return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
