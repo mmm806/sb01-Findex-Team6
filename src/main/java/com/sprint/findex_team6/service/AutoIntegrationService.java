@@ -49,6 +49,10 @@ public class AutoIntegrationService {
     return ResponseEntity.status(HttpStatus.CREATED).body(autoIntegration);
   }
 
+  public void delete(Long indexId){
+    autoIntegrationRepository.deleteByIndex_Id(indexId);
+  }
+
 
   @Scheduled(cron = "0 0 0 * * *") // 밤 12시에 연동
   public ResponseEntity<?> updateAuto(){

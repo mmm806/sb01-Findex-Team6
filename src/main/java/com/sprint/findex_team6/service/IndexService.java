@@ -93,6 +93,7 @@ public class IndexService {
 
   public ResponseEntity<Void> delete(Long id){
     if(indexRepository.findById(id).isPresent()){
+      autoIntegrationService.delete(id);
       indexRepository.deleteById(id);
       return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
