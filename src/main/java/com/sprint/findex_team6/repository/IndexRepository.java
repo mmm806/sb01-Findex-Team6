@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface IndexRepository extends JpaRepository<Index, Long> {
-<
+
   List<Index> findByIndexClassificationContaining(String indexClassification);
 
   List<Index> findByIndexNameContaining(String indexName);
@@ -26,7 +26,6 @@ public interface IndexRepository extends JpaRepository<Index, Long> {
 
   List<Index> findByIndexClassification(String classification); 
 
-  Optional<Index> findByIndexName(String indexName);
 
   List<Index> findAllByIdIn(Collection<Integer> ids);
 
