@@ -30,14 +30,12 @@ public interface IndexValRepository extends JpaRepository<IndexVal, Long> {
   List<IndexVal> findByIndexAndBaseDateBetweenOrderByBaseDateAsc(Index index, LocalDate startDate, LocalDate endDate);
 
   List<IndexVal> findByIndexIdAndBaseDateBetween(Long indexId, LocalDate startDate, LocalDate endDate, Sort sort);
-  
 
-  Optional<IndexVal> findAllByIndex_IdAndBaseDate(Long indexId, LocalDate date);
   Page<IndexVal> findByIndex_IdAndBaseDateBetween(
       Long indexId, LocalDate startDate, LocalDate endDate,
       Pageable pageable);
 
-  List<IndexVal> findAllByIndex_IdAndDate(Long indexId, LocalDate date);
+  List<IndexVal> findAllByIndex_IdAndBaseDate(Long indexId, LocalDate baseDate);
   @Query("SELECT iv FROM IndexVal iv "
       + "WHERE iv.index.id = :indexId "
       + "AND iv.baseDate BETWEEN :startDate AND :endDate "

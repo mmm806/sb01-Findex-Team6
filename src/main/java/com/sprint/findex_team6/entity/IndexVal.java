@@ -34,6 +34,7 @@ public class IndexVal {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
+  @Column(name = "base_date")
   private LocalDate baseDate;         // 기준 일자
 
   @Enumerated(EnumType.STRING)
