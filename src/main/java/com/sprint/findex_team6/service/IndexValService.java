@@ -274,6 +274,7 @@ public class IndexValService {
         .limit(limit)
         .collect(Collectors.toList());
   }
+  //indexInfoId 받지 않을 때 로직
   public List<RankedIndexPerformanceDto> getIndexPerformanceRank(String periodType, int limit) {
     LocalDate beforeDate = calculateStartDate(periodType);
     LocalDate today = LocalDate.now();
