@@ -42,9 +42,9 @@ public interface IndexRepository extends JpaRepository<Index, Long> {
 
   List<IndexInfoSummaryDto> findAllProjectBy();
 
-  List<Index> findByIndexClassificationContainingAndIndexNameContainingAndFavorite(
+  List<Index> findByIndexClassificationAndIndexNameAndFavorite(
           String indexClassification, String indexName, Boolean favorite, Pageable pageable);
 
-  List<Index> findByIdGreaterThanAndIndexClassificationContainingAndIndexNameContainingAndFavorite(
+  List<Index> findByIdGreaterThanAndIndexClassificationAndIndexNameAndFavorite(
           Long idAfter, String indexClassification, String indexName, Boolean favorite, Pageable pageable);
 }

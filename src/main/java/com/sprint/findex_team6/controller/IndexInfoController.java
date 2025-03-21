@@ -50,16 +50,20 @@ public class IndexInfoController {
           @RequestParam(required = false) String indexClassification,
           @RequestParam(required = false) String indexName,
           @RequestParam(required = false) Boolean favorite,
+          @RequestParam(required = false) String cursor,  // 커서
+          @RequestParam(required = false) Long idAfter,  // idAfter와 cursor 둘 중 하나를 사용할 수 있음
           @RequestParam(defaultValue = "indexClassification") String sortField,
           @RequestParam(defaultValue = "asc") String sortDirection,
-          @RequestParam(required = false) Long idAfter,
+          @RequestParam(defaultValue = "10") int size,  // 페이지 크기 (기본값 10)
           Pageable pageable
   ) {
+    // idAfter 또는 cursor가 있으면 커서 기반 페이지네이션을 처리하고, 없으면 페이지 번호 기반 처리
     CursorPageResponseIndexInfoDto<IndexInfoDto> response = indexService.getIndexInfos(
-            indexClassification, indexName, favorite, sortField, sortDirection, idAfter, pageable
+            indexClassification, indexName, favorite, cursor, idAfter, sortField, sortDirection, size, pageable
     );
     return ResponseEntity.status(HttpStatus.OK).body(response);
   }
+
 
   @GetMapping("/summaries")
   public ResponseEntity<List<IndexInfoSummaryDto>> getIndexSummaries() {

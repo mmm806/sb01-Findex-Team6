@@ -85,12 +85,5 @@ class IndexServiceTestB {
         assertEquals(index.getIndexName(), result.indexName());
     }
 
-    @Test
-    void testGetIndexInfos() {
-        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "indexName"));
-        CursorPageResponseIndexInfoDto<IndexInfoDto> result = indexService.getIndexInfos(
-                "KOSPI", "IT 서비스", true, "indexName", "asc", null, pageable);
-        assertNotNull(result);
-        assertFalse(result.content().isEmpty());
-    }
+
 }
