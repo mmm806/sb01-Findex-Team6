@@ -9,6 +9,8 @@ import com.sprint.findex_team6.entity.ContentType;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexDataLink;
 import com.sprint.findex_team6.entity.IndexVal;
+import com.sprint.findex_team6.exception.syncjobs.DuplicateIndexException;
+import com.sprint.findex_team6.exception.syncjobs.NotFoundIndexException;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
 import com.sprint.findex_team6.repository.IndexRepository;
 import com.sprint.findex_team6.repository.IndexValRepository;
@@ -134,11 +136,6 @@ public class SyncDataJobsService {
       Long trqu = filteredItems.get(i).path("trqu").asLong();// 거래량
       Double trPrc = filteredItems.get(i).path("trPrc").asDouble();// 거래대금
       Double lstgMrktTotAmt = filteredItems.get(i).path("lstgMrktTotAmt").asDouble();// 상장시가총액
-      String basDt = filteredItems.get(i).path("basDt").asText();// 가져온 데이터 날짜
-
-      if (isExistsIndexDataLink(basDt, indexVal)) {
-        continue;
-      }
 
       IndexVal changedIndexVal = indexVal.changeData(mkp, clpr, hipr, lopr, vs, fltRt, trqu, trPrc,
           lstgMrktTotAmt);
@@ -146,19 +143,6 @@ public class SyncDataJobsService {
       indexValRepository.save(changedIndexVal);
     }
 
-  }
-
-  /**
-  * @methodName : isExistsIndexDataLink
-  * @date : 2025-03-20 오후 3:44
-  * @author : wongil
-  * @Description: baseDate와 indexId의 조합이 같으면 true
-  **/
-  private boolean isExistsIndexDataLink(String basDt, IndexVal indexVal) {
-    LocalDate localDate = LocalDate.parse(basDt, DateTimeFormatter.ofPattern("yyyyMMdd"));
-
-    return indexDataLinkRepository.findFirstByIndex_IdAndTargetDate(indexVal.getIndex().getId(), localDate)
-        .isPresent();
   }
 
   /**
@@ -203,7 +187,7 @@ public class SyncDataJobsService {
 
     List<Index> indexList = findAllIndexList(request.indexInfoIds());
     if (indexList == null || indexList.isEmpty()) {
-      throw new RuntimeException("지수 정보가 없습니다.");
+      throw new NotFoundIndexException("지수 정보가 없습니다.");
     }
 
     return indexList;
@@ -222,7 +206,7 @@ public class SyncDataJobsService {
         .map(Index::getIndexName)
         .distinct()
         .toList();
-    
+
     return filterItems(indexList,
         getAllItems(getJsonNodeList(request, indexNames)));
   }
@@ -272,12 +256,6 @@ public class SyncDataJobsService {
 
     List<IndexVal> indexVals = new ArrayList<>();
 
-    boolean existsIndexDataLink = isExistsIndexDataLink(indexDataLinks, index);
-
-    if (!existsIndexDataLink) {
-      return indexValRepository.findAll();
-    }
-
     for (int i = 0; i < size; i++) {
       IndexVal indexVal = new IndexVal(
           indexDataLinks.get(i).getTargetDate(),
@@ -297,26 +275,18 @@ public class SyncDataJobsService {
       indexVals.add(indexVal);
     }
 
+    List<Long> valIndexIds = indexVals.stream()
+        .map(val -> val.getIndex().getId())
+        .toList();
+
+    boolean isExistsId = indexValRepository.existsByIndex_IdIn(valIndexIds);
+    if (isExistsId) {
+      throw new DuplicateIndexException();
+    }
+
     indexValRepository.saveAll(indexVals);
 
     return indexVals;
-  }
-
-  /**
-  * @methodName : isExistsIndexDataLink
-  * @date : 2025-03-20 오후 3:44
-  * @author : wongil
-  * @Description: dataLink의 targetDate와 indexId 조합이 없으면 true
-  **/
-  private boolean isExistsIndexDataLink(List<IndexDataLink> indexDataLinks, Index index) {
-    List<LocalDate> list = indexDataLinks.stream()
-        .map(IndexDataLink::getTargetDate)
-        .toList();
-
-    List<IndexDataLink> byIndexIdAndTargetDateIn = indexDataLinkRepository.findByIndex_IdAndTargetDateIn(
-        index.getId(), list);
-
-    return byIndexIdAndTargetDateIn.isEmpty();
   }
 
   /**
@@ -486,10 +456,6 @@ public class SyncDataJobsService {
 
     List<IndexDataLink> links = new ArrayList<>();
 
-    if (!isExistsIndexDateLink(dtos, index)) {
-      return indexDataLinkRepository.findAll();
-    }
-
     dtos
         .forEach(dto -> {
 
@@ -507,23 +473,6 @@ public class SyncDataJobsService {
         });
 
     return indexDataLinkRepository.saveAll(links);
-  }
-
-  /**
-  * @methodName : isExistsIndexDateLink
-  * @date : 2025-03-20 오후 3:43
-  * @author : wongil
-  * @Description: index와 날짜 조합이 없으면 true
-  **/
-  private boolean isExistsIndexDateLink(List<SyncJobDto> dtos, Index index) {
-    List<LocalDate> list = dtos.stream()
-        .map(SyncJobDto::getTargetDate)
-        .toList();
-
-    List<IndexDataLink> byIndexIdAndTargetDateIn = indexDataLinkRepository.findByIndex_IdAndTargetDateIn(
-        index.getId(), list);
-
-    return byIndexIdAndTargetDateIn.isEmpty();
   }
 
 

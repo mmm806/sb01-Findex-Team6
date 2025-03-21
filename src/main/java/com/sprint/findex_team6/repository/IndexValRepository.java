@@ -16,6 +16,8 @@ public interface IndexValRepository extends JpaRepository<IndexVal, Long> {
 
   List<IndexVal> findByIndex_Id(Long id);
 
+  boolean existsByIndex_IdIn(List<Long> ids);
+
   Optional<IndexVal> findAllByIndex_IdAndBaseDate(Long indexId, LocalDate date);
   
   Page<IndexVal> findByIndex_IdAndBaseDateBetween(

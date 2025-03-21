@@ -7,6 +7,10 @@ import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexDataLink;
 import com.sprint.findex_team6.entity.SourceType;
 import com.sprint.findex_team6.exception.NotFoundException;
+import com.sprint.findex_team6.exception.syncjobs.DuplicateIndexException;
+import com.sprint.findex_team6.exception.syncjobs.NotFoundIndexException;
+import com.sprint.findex_team6.exception.syncjobs.SyncInfoFailedException;
+import com.sprint.findex_team6.exception.syncjobs.FailedCallOpenApiException;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
 import com.sprint.findex_team6.repository.IndexRepository;
 import com.sprint.findex_team6.service.util.SyncJobUtils;
@@ -74,6 +78,8 @@ public class SyncInfoJobsService {
     int numOfRows = SyncJobUtils.getNumOfRows(items);
     int totalPages = SyncJobUtils.getTotalPages(items);
 
+    validDuplicatedIndex(response);
+
     // index id 값을 얻기 위해 더미로 저장
     List<Index> indexList = indexRepository.saveAll(createDummyIndex(totalCount));
 
@@ -84,6 +90,29 @@ public class SyncInfoJobsService {
     schedulerAsyncIndexInfo(indexList, totalPages, numOfRows);
 
     return mockList;
+  }
+
+  private void validDuplicatedIndex(String response) {
+    JsonNode items = getItems(response);
+
+    List<Index> indexList = indexRepository.findAll();
+
+    for (JsonNode item : items) {
+      String classificationName = item.path("idxCsf").asText();
+      String indexName = item.path("idxNm").asText();
+      String basPntm = item.path("basPntm").asText();
+
+      indexList.forEach(index -> {
+            if (index.getIndexClassification().equals(classificationName) &&
+                index.getIndexName().equals(indexName) &&
+                index.getBaseDate()
+                    .equals(LocalDate.parse(basPntm, DateTimeFormatter.ofPattern("yyyyMMdd")))) {
+
+              throw new DuplicateIndexException();
+            }
+          });
+    }
+
   }
 
   /**
@@ -127,7 +156,7 @@ public class SyncInfoJobsService {
     CompletableFuture.runAsync(() -> {
       try {
         process(indexIds, totalPages, numOfRows);
-      } catch (Exception e) {
+      } catch (SyncInfoFailedException e) {
         log.error("Async error!!", e);
       }
     });
@@ -147,6 +176,10 @@ public class SyncInfoJobsService {
     transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
     String response = getAllInfosByCallOpenApi();
+
+    if (response == null) {
+      throw new FailedCallOpenApiException();
+    }
 
     transactionTemplate.execute(status -> {
 
@@ -338,7 +371,7 @@ public class SyncInfoJobsService {
       Long indexId = indexDataLinkIds.get(offset + i);
 
       Index index = indexRepository.findById(indexId)
-          .orElseThrow(() -> new RuntimeException("Index not found: " + indexId));
+          .orElseThrow(NotFoundIndexException::new);
 
       // 실제 데이터로 업데이트
       updateIndex(index, item);

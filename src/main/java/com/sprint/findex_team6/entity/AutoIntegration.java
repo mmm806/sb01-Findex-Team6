@@ -30,4 +30,8 @@ public class AutoIntegration {
 
   @Column
   private Boolean enabled; // 활성화 여부
+
+  public void changeEnable(boolean enabled) {
+    this.enabled = enabled;
+  }
 }
