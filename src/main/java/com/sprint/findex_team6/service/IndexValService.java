@@ -81,7 +81,7 @@ public class IndexValService {
       indexVal.setTradingPrice(BigDecimal.valueOf(indexDataUpdateRequest.tradingPrice()));
     }
     if (indexDataUpdateRequest.marketTotalAmount() != null) {
-      indexVal.setMarketTotalCount(BigDecimal.valueOf(indexDataUpdateRequest.marketTotalAmount()));
+      indexVal.setMarketTotalAmount(BigDecimal.valueOf(indexDataUpdateRequest.marketTotalAmount()));
     }
     return indexValMapper.toDto(indexVal);
   }
@@ -113,7 +113,7 @@ public class IndexValService {
           .fluctuationRate(request.fluctuationRate())
           .tradingQuantity(request.tradingQuantity())
           .tradingPrice(BigDecimal.valueOf(request.tradingPrice()))
-          .marketTotalCount(BigDecimal.valueOf(request.marketTotalAmount()))
+          .marketTotalAmount(BigDecimal.valueOf(request.marketTotalAmount()))
           .index(index)
           .build();
 

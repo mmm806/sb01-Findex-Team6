@@ -39,7 +39,7 @@ CREATE TABLE index_val (
                            base_date DATE NOT NULL,
                            source_type source_type NOT NULL,
                            market_price NUMERIC NOT NULL,
-                           close_price NUMERIC NOT NULL,
+                           closing_price NUMERIC NOT NULL,
                            high_price NUMERIC NOT NULL,
                            low_price NUMERIC NOT NULL,
                            versus NUMERIC NOT NULL,
