@@ -6,7 +6,6 @@ import com.sprint.findex_team6.entity.ContentType;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexDataLink;
 import com.sprint.findex_team6.entity.SourceType;
-import com.sprint.findex_team6.exception.syncjobs.DuplicateIndexException;
 import com.sprint.findex_team6.exception.syncjobs.FailedCallOpenApiException;
 import com.sprint.findex_team6.exception.syncjobs.NotFoundIndexException;
 import com.sprint.findex_team6.exception.syncjobs.NotFoundItemException;
@@ -75,15 +74,18 @@ public class SyncInfoJobsService {
     JsonNode items = SyncJobUtils.findItems(response);
 
     int totalCount = SyncJobUtils.getTotalCount(items);
-
     if (totalCount == 0) {
       return returnAlreadySyncJobData();
+    }
+
+    List<SyncJobDto> isDuplicated = validDuplicatedIndex(response);
+    if (isDuplicated != null) {
+      return isDuplicated;
     }
 
     int numOfRows = SyncJobUtils.getNumOfRows(items);
     int totalPages = SyncJobUtils.getTotalPages(items);
 
-    validDuplicatedIndex(response);
 
     // index id 값을 얻기 위해 더미로 저장
     List<Index> indexList = indexRepository.saveAll(createDummyIndex(totalCount));
@@ -98,11 +100,11 @@ public class SyncInfoJobsService {
   }
 
   /**
-  * @methodName : returnAlreadySyncJobData
-  * @date : 2025-03-21 오전 10:43
-  * @author : wongil
-  * @Description: 만약 OPEN API 호출 시 결과가 없고 db에 index data link가 있으면 바로 반환
-  **/
+   * @methodName : returnAlreadySyncJobData
+   * @date : 2025-03-21 오전 10:43
+   * @author : wongil
+   * @Description: 만약 OPEN API 호출 시 결과가 없고 db에 index data link가 있으면 바로 반환
+   **/
   private List<SyncJobDto> returnAlreadySyncJobData() {
     List<IndexDataLink> links = indexDataLinkRepository.findAll();
 
@@ -126,31 +128,51 @@ public class SyncInfoJobsService {
   }
 
   /**
-  * @methodName : validDuplicatedIndex
-  * @date : 2025-03-21 오전 10:26
-  * @author : wongil
-  * @Description: 지수 정보 중복 저장 되는거 방지
-  **/
-  private void validDuplicatedIndex(String response) {
+   * @methodName : validDuplicatedIndex
+   * @date : 2025-03-21 오전 10:26
+   * @author : wongil
+   * @Description: 지수 정보 중복 저장 되는거 방지
+   **/
+  private List<SyncJobDto> validDuplicatedIndex(String response) {
     JsonNode items = getItems(response);
 
-    List<Index> indexList = indexRepository.findAll();
+    List<IndexDataLink> links = indexDataLinkRepository.findAll();
 
     for (JsonNode item : items) {
       String classificationName = item.path("idxCsf").asText();
       String indexName = item.path("idxNm").asText();
       String basPntm = item.path("basPntm").asText();
 
-      indexList.forEach(index -> {
-            if (index.getIndexClassification().equals(classificationName) &&
-                index.getIndexName().equals(indexName) &&
-                index.getBaseDate()
-                    .equals(LocalDate.parse(basPntm, DateTimeFormatter.ofPattern("yyyyMMdd")))) {
+      for (IndexDataLink link : links) {
+        if (link.getIndex().getIndexClassification().equals(classificationName) &&
+            link.getIndex().getIndexName().equals(indexName) &&
+            link.getIndex().getBaseDate()
+                .equals(LocalDate.parse(basPntm, DateTimeFormatter.ofPattern("yyyyMMdd")))) {
 
-              throw new DuplicateIndexException();
-            }
-          });
+          return returnAlreadySyncJobData();
+        }
+      }
     }
+
+    return null;
+
+//    List<Index> indexList = indexRepository.findAll();
+//
+//    for (JsonNode item : items) {
+//      String classificationName = item.path("idxCsf").asText();
+//      String indexName = item.path("idxNm").asText();
+//      String basPntm = item.path("basPntm").asText();
+//
+//      indexList.forEach(index -> {
+//            if (index.getIndexClassification().equals(classificationName) &&
+//                index.getIndexName().equals(indexName) &&
+//                index.getBaseDate()
+//                    .equals(LocalDate.parse(basPntm, DateTimeFormatter.ofPattern("yyyyMMdd")))) {
+//
+//              throw new DuplicateIndexException();
+//            }
+//          });
+//    }
 
   }
 
@@ -340,7 +362,7 @@ public class SyncInfoJobsService {
    * @author : wongil
    * @Description: 1페이지 처리
    **/
-  private void firstPageFetch(String response, List<Long> indexDataLinkIds,int offset) {
+  private void firstPageFetch(String response, List<Long> indexDataLinkIds, int offset) {
 
     saveIndex(getItems(response), indexDataLinkIds, offset);
   }
@@ -359,7 +381,8 @@ public class SyncInfoJobsService {
     UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(BASE_URL)
         .queryParam("serviceKey", API_KEY)
         .queryParam("resultType", "json")
-        .queryParam("beginBasDt", convertToStringDateFormat(LocalDate.now().minusDays(WHAT_DAYS_FROM)))
+        .queryParam("beginBasDt",
+            convertToStringDateFormat(LocalDate.now().minusDays(WHAT_DAYS_FROM)))
         .queryParam("endBasDt", convertToStringDateFormat(LocalDate.now()))
         .queryParam("pageNo", pageNumber)
         .queryParam("numOfRows", numOfRows);
@@ -434,7 +457,8 @@ public class SyncInfoJobsService {
     String baseIndex = item.path("basIdx").asText();
     LocalDate parsedBaseDate = LocalDate.parse(baseDate, DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-    index.updateInfo(indexClassification, idxNm, employedItemsCount, parsedBaseDate, new BigDecimal(baseIndex));
+    index.updateInfo(indexClassification, idxNm, employedItemsCount, parsedBaseDate,
+        new BigDecimal(baseIndex));
   }
 
   /**
