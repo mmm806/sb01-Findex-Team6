@@ -9,9 +9,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
@@ -29,9 +31,15 @@ public class AutoIntegration {
   private Index index; // 지수 정보 참조
 
   @Column
+  @Setter
   private Boolean enabled; // 활성화 여부
 
   public void changeEnable(boolean enabled) {
+    this.enabled = enabled;
+  }
+
+  public AutoIntegration(Index index, Boolean enabled) {
+    this.index = index;
     this.enabled = enabled;
   }
 }

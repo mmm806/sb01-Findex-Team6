@@ -35,11 +35,11 @@ class IndexServiceTest {
   @Test
   void update() {
     IndexInfoUpdateRequest updateRequest = new IndexInfoUpdateRequest(300,LocalDate.now(),BigDecimal.TEN,false);
-    indexService.update(updateRequest,8L);
+    indexService.update(updateRequest,12L);
   }
 
   @Test
   void delete() {
-    indexService.delete(8L);
+    indexService.delete(12L);
   }
 }
