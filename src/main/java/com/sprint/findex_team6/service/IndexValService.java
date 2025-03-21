@@ -277,6 +277,41 @@ public class IndexValService {
         .collect(Collectors.toList());
   }
 
+  //indexInfoId 받지 않는 경우
+  public List<RankedIndexPerformanceDto> getIndexPerformanceRank(String periodType, int limit){
+    LocalDate beforeDate = calculateStartDate(periodType);
+    LocalDate today = LocalDate.now();
+
+    //전체 지수 조회
+    List<Index> indexInfoList = indexRepository.findAll();  // 모든 지수 조회
+
+    List<IndexVal> indexDataList = indexValRepository.findByIndexInAndBaseDateIn(indexInfoList, List.of(beforeDate, today));
+
+    //데이터 매핑 -> map으로 정리
+    Map<Long, IndexVal> beforeDataMap = indexDataList.stream()
+        .filter(data -> data.getBaseDate().equals(beforeDate))
+        .collect(Collectors.toMap(data -> data.getIndex().getId(), Function.identity()));
+
+    Map<Long, IndexVal> currentDataMap = indexDataList.stream()
+        .filter(data -> data.getBaseDate().equals(today))
+        .collect(Collectors.toMap(data -> data.getIndex().getId(), Function.identity()));
+
+    //성과 계산
+    List<IndexPerformanceDto> performanceList = indexInfoList.stream()
+        .map(indexInfo -> createIndexPerformanceDto(indexInfo, beforeDataMap, currentDataMap))
+        .flatMap(Optional::stream)
+        .sorted(Comparator.comparing(IndexPerformanceDto::fluctuationRate).reversed())
+        .limit(limit)
+        .toList();
+
+    //순위 부여
+    return IntStream.range(0, performanceList.size())
+        .mapToObj(i -> new RankedIndexPerformanceDto(performanceList.get(i), i + 1))
+        .limit(limit)
+        .collect(Collectors.toList());
+  }
+
+
   //특정 지수 차트 데이터 조회
   public IndexChartDto getIndexChart(String periodType, Long indexId) {
     LocalDate startDate = calculateStartDate(periodType);

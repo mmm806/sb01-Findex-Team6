@@ -56,7 +56,7 @@ public class IndexValController {
   @GetMapping("/performance/rank")
   public ResponseEntity<List<RankedIndexPerformanceDto>> getIndexPerformanceRank(
       @RequestParam String periodType,
-      @RequestParam(required = false) Long indexInfoId, //indexInfoId는 선택적으로 받음
+      @RequestParam(required = false) Long indexInfoId, //indexInfoId 선택 조건 추가
       @RequestParam int limit) {
     List<RankedIndexPerformanceDto> dto;
 
