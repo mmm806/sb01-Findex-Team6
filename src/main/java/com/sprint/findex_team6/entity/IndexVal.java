@@ -45,20 +45,14 @@ public class IndexVal {
   private SourceType sourceType;      // 소스 타입
 
   private BigDecimal marketPrice; // 시가
-
-  @Column(name = "close_price")
   private BigDecimal closingPrice; // 종가
-
-
   private BigDecimal highPrice; // 고가
   private BigDecimal lowPrice;  // 저가
   private BigDecimal versus;       // 대비
   private BigDecimal fluctuationRate; // 등락률
   private Long tradingQuantity;             // 거래량
   private BigDecimal tradingPrice; // 거래대금
-
-  @Column(name = "market_total_amount")
-  private BigDecimal marketTotalCount;    // 상장 시가 총액
+  private BigDecimal marketTotalAmount;    // 상장 시가 총액
 
   @ManyToOne //하나의 지수정보에 대해 여러개의 지수 데이터
   @JoinColumn(name = "index_id")
@@ -76,7 +70,7 @@ public class IndexVal {
       BigDecimal fluctuationRate,
       Long tradingQuantity,
       BigDecimal tradingPrice,
-      BigDecimal marketTotalCount,
+      BigDecimal marketTotalAmount,
       Index index
   ) {
     this.baseDate = baseDate;
@@ -89,7 +83,7 @@ public class IndexVal {
     this.fluctuationRate = fluctuationRate;
     this.tradingQuantity = tradingQuantity;
     this.tradingPrice = tradingPrice;
-    this.marketTotalCount = marketTotalCount;
+    this.marketTotalAmount = marketTotalAmount;
     this.index = index;
   }
 
@@ -112,7 +106,7 @@ public class IndexVal {
     this.fluctuationRate = BigDecimal.valueOf(fltRt);
     this.tradingQuantity = trqu;
     this.tradingPrice = BigDecimal.valueOf(trPrc);
-    this.marketTotalCount = BigDecimal.valueOf(lstgMrktTotAmt);
+    this.marketTotalAmount = BigDecimal.valueOf(lstgMrktTotAmt);
 
 
     return this;
