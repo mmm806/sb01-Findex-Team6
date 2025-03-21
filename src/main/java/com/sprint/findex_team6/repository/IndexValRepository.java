@@ -23,9 +23,7 @@ public interface IndexValRepository extends JpaRepository<IndexVal, Long> {
   //Dashboard
   List<IndexVal> findByIndexIdInAndBaseDateIn(List<Long> indexIds, List<LocalDate> startDate);
 
-  boolean existsByIndexIdAndBaseDate(Long indexId, LocalDate localDate);
 
-  Optional<IndexVal> findByIndexAndBaseDate(Index index, LocalDate baseDate);
 
   List<IndexVal> findByIndexInAndBaseDateIn(List<Index> indexList, List<LocalDate> startDate);
 
@@ -36,7 +34,6 @@ public interface IndexValRepository extends JpaRepository<IndexVal, Long> {
   Optional<IndexVal> findByIndex_IdAndBaseDate(Long index_id, LocalDate baseDate);
 
   Optional<IndexVal> findAllByIndex_IdAndBaseDate(Long indexId, LocalDate date);
-  
   Page<IndexVal> findByIndex_IdAndBaseDateBetween(
       Long indexId, LocalDate startDate, LocalDate endDate,
       Pageable pageable);
