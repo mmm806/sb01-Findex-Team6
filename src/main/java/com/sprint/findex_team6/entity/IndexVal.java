@@ -33,7 +33,7 @@ public class IndexVal {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
-
+  
   private LocalDate baseDate;         // 기준 일자
 
   @Enumerated(EnumType.STRING)
@@ -48,7 +48,6 @@ public class IndexVal {
   private BigDecimal fluctuationRate; // 등락률
   private Long tradingQuantity;             // 거래량
   private BigDecimal tradingPrice; // 거래대금
-
 
   @Column(name = "martket_total_amount")
   private BigDecimal marketTotalCount;    // 상장 시가 총액
