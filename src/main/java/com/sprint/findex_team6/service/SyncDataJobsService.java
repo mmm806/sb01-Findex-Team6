@@ -10,7 +10,10 @@ import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexDataLink;
 import com.sprint.findex_team6.entity.IndexVal;
 import com.sprint.findex_team6.exception.syncjobs.DuplicateIndexException;
+import com.sprint.findex_team6.exception.syncjobs.NotFoundIndeValException;
 import com.sprint.findex_team6.exception.syncjobs.NotFoundIndexException;
+import com.sprint.findex_team6.exception.syncjobs.NotFoundItemException;
+import com.sprint.findex_team6.exception.syncjobs.SyncFailedException;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
 import com.sprint.findex_team6.repository.IndexRepository;
 import com.sprint.findex_team6.repository.IndexValRepository;
@@ -90,6 +93,12 @@ public class SyncDataJobsService {
     return dummyResponse;
   }
 
+  /**
+  * @methodName : getItems
+  * @date : 2025-03-21 오전 9:49
+  * @author : wongil
+  * @Description: OPENAPI에서 지수 분류명으로 데이터 가져오기
+  **/
   private List<JsonNode> getItems(IndexDataSyncRequest request, List<Index> indexList) {
     List<String> names = indexList.stream()
         .map(Index::getIndexName)
@@ -108,7 +117,7 @@ public class SyncDataJobsService {
     CompletableFuture.runAsync(() -> {
       try {
         process(indexList, jobDtoList, items);
-      } catch (Exception e) {
+      } catch (SyncFailedException e) {
         log.error("Async error!!", e);
       }
     });
@@ -152,12 +161,18 @@ public class SyncDataJobsService {
   * @Description: 지수 분류명으로 특정 item만 필터링
   **/
   private List<JsonNode> filterItemsByClassificationName(List<Index> indexList, List<JsonNode> allItems) {
-    return indexList.stream()
+    List<JsonNode> itemList = indexList.stream()
         .flatMap(index ->
             allItems.stream()
                 .filter(item -> item.path("idxCsf").asText().equals(index.getIndexClassification()))
         )
         .toList();
+
+    if (itemList.isEmpty()) {
+      throw new NotFoundItemException();
+    }
+
+    return itemList;
   }
 
   /**
@@ -167,14 +182,21 @@ public class SyncDataJobsService {
   * @Description: index.id와 targetDate로 해당하는 IndexVal 찾기
   **/
   private List<IndexVal> findIndexValListByIndexIdAndTargetDate(List<Index> indexList, List<SyncJobDto> jobDtoList) {
-    return indexList.stream()
+    List<IndexVal> indexValList = indexList.stream()
         .flatMap(index ->
             jobDtoList.stream()
                 .flatMap(dto ->
-                    indexValRepository.findAllByIndex_IdAndBaseDate(index.getId(), dto.getTargetDate())
+                    indexValRepository.findAllByIndex_IdAndBaseDate(index.getId(),
+                            dto.getTargetDate())
                         .stream())
         )
         .toList();
+
+    if (indexList.isEmpty()) {
+      throw new NotFoundIndeValException();
+    }
+
+    return indexValList;
   }
 
   /**

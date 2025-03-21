@@ -9,7 +9,7 @@ import com.sprint.findex_team6.entity.SourceType;
 import com.sprint.findex_team6.exception.NotFoundException;
 import com.sprint.findex_team6.exception.syncjobs.DuplicateIndexException;
 import com.sprint.findex_team6.exception.syncjobs.NotFoundIndexException;
-import com.sprint.findex_team6.exception.syncjobs.SyncInfoFailedException;
+import com.sprint.findex_team6.exception.syncjobs.SyncFailedException;
 import com.sprint.findex_team6.exception.syncjobs.FailedCallOpenApiException;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
 import com.sprint.findex_team6.repository.IndexRepository;
@@ -156,7 +156,7 @@ public class SyncInfoJobsService {
     CompletableFuture.runAsync(() -> {
       try {
         process(indexIds, totalPages, numOfRows);
-      } catch (SyncInfoFailedException e) {
+      } catch (SyncFailedException e) {
         log.error("Async error!!", e);
       }
     });

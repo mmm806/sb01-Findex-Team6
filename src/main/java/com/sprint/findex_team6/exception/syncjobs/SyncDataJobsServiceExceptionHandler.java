@@ -31,8 +31,8 @@ public class SyncDataJobsServiceExceptionHandler {
   }
 
   @ResponseStatus(HttpStatus.BAD_REQUEST)
-  @ExceptionHandler(SyncInfoFailedException.class)
-  public ErrorResponse syncInfoFailed(SyncInfoFailedException e) {
+  @ExceptionHandler(SyncFailedException.class)
+  public ErrorResponse syncInfoFailed(SyncFailedException e) {
     SyncJobErrorCode errorCode = SyncJobErrorCode.FAILED_SYNC_INFO;
 
     return new ErrorResponse(LocalDateTime.now(), errorCode.getStatus()
@@ -50,7 +50,25 @@ public class SyncDataJobsServiceExceptionHandler {
 
   @ResponseStatus(HttpStatus.NOT_FOUND)
   @ExceptionHandler(NotFoundIndexException.class)
-  public ErrorResponse notfoundIndex(NotFoundIndexException e) {
+  public ErrorResponse notFoundIndex(NotFoundIndexException e) {
+    SyncJobErrorCode errorCode = SyncJobErrorCode.FAILED_SYNC_INFO;
+
+    return new ErrorResponse(LocalDateTime.now(), errorCode.getStatus()
+        .value(), errorCode.getMessage(), errorCode.getDetails());
+  }
+
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  @ExceptionHandler(NotFoundIndeValException.class)
+  public ErrorResponse notFoundIndexVal(NotFoundIndeValException e) {
+    SyncJobErrorCode errorCode = SyncJobErrorCode.FAILED_SYNC_INFO;
+
+    return new ErrorResponse(LocalDateTime.now(), errorCode.getStatus()
+        .value(), errorCode.getMessage(), errorCode.getDetails());
+  }
+
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  @ExceptionHandler(NotFoundItemException.class)
+  public ErrorResponse notFoundItem(NotFoundItemException e) {
     SyncJobErrorCode errorCode = SyncJobErrorCode.FAILED_SYNC_INFO;
 
     return new ErrorResponse(LocalDateTime.now(), errorCode.getStatus()
