@@ -40,6 +40,7 @@ public class IndexService {
   private final IndexMapper indexMapper;
   private final IndexRepository indexRepository;
   private final CursorPageResponseMapper cursorPageResponseMapper;
+  private final AutoIntegrationService autoIntegrationService;
 
 
   public ResponseEntity<?> create(IndexInfoCreateRequest indexInfoCreateRequest){
