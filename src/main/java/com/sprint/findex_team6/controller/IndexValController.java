@@ -56,9 +56,15 @@ public class IndexValController {
   @GetMapping("/performance/rank")
   public ResponseEntity<List<RankedIndexPerformanceDto>> getIndexPerformanceRank(
       @RequestParam String periodType,
-      @RequestParam Long indexInfoId,
+      @RequestParam(required = false) Long indexInfoId, //indexInfoId는 선택적으로 받음
       @RequestParam int limit) {
-    List<RankedIndexPerformanceDto> dto = indexValService.getIndexPerformanceRank(periodType, indexInfoId, limit);
+    List<RankedIndexPerformanceDto> dto;
+
+    if(indexInfoId == null) {
+      dto = indexValService.getIndexPerformanceRank(periodType, null, limit);
+    } else {
+      dto = indexValService.getIndexPerformanceRank(periodType, indexInfoId, limit);
+    }
     return ResponseEntity.status(HttpStatus.OK).body(dto);
   }
 

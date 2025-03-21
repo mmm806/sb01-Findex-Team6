@@ -88,12 +88,6 @@ public class AutoSyncConfigService {
     );
   }
 
-  /**
-  * @methodName : getNextCursor
-  * @date : 2025-03-20 오후 2:20
-  * @author : wongil
-  * @Description: nextCursor가 null이면 enableBaseNextCursor 이걸로 페이징
-  **/
   private String getNextCursor(String nextCursor, Boolean enableBaseNextCursor) {
     return nextCursor != null ? nextCursor : String.valueOf(enableBaseNextCursor);
   }
