@@ -9,6 +9,7 @@ import com.sprint.findex_team6.dto.response.ErrorResponse;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.SourceType;
 import com.sprint.findex_team6.exception.NotFoundException;
+import com.sprint.findex_team6.mapper.CursorPageResponseMapper;
 import com.sprint.findex_team6.mapper.IndexMapper;
 import com.sprint.findex_team6.repository.IndexRepository;
 import jakarta.transaction.Transactional;
@@ -24,9 +25,8 @@ import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -39,6 +39,8 @@ import org.springframework.stereotype.Service;
 public class IndexService {
   private final IndexMapper indexMapper;
   private final IndexRepository indexRepository;
+  private final CursorPageResponseMapper cursorPageResponseMapper;
+
 
   public ResponseEntity<?> create(IndexInfoCreateRequest indexInfoCreateRequest){
 
@@ -143,69 +145,82 @@ public class IndexService {
 
 
   public CursorPageResponseIndexInfoDto<IndexInfoDto> getIndexInfos(
-          String indexClassification, String indexName, Boolean favorite, String cursor, Long idAfter,
-          String sortField, String sortDirection, int size, Pageable pageable) {
+          String indexClassification, String indexName, Boolean favorite,
+          String cursor, Long idAfter,
+          String sortField, String sortDirection,
+          int size, Pageable pageable) {
 
-    // cursor와 idAfter를 동시에 처리하기 위한 로직
+    // 기본값 처리
+    indexClassification = indexClassification == null ? "" : indexClassification;
+    indexName = indexName == null ? "" : indexName;
+    favorite = favorite == null ? false : favorite;
+
     Long cursorIdAfter = null;
     if (cursor != null) {
-      cursorIdAfter = decodeCursor(cursor); // cursor를 디코딩하여 idAfter 값 추출
+      cursorIdAfter = Long.parseLong(cursor);
     }
-
-    // idAfter와 cursor는 동시에 제공되지 않도록 처리하거나, cursor를 우선적으로 사용
     if (cursorIdAfter == null && idAfter != null) {
-      cursorIdAfter = idAfter; // cursor가 없으면 idAfter 사용
+      cursorIdAfter = idAfter;
     }
 
-    // 정렬 조건 생성
-    Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortField);
-    pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
-
-    // 지수 분류명, 지수명, 즐겨찾기 조건을 반영하여 필터링
-    List<Index> indexList;
-    if (cursorIdAfter == null) {
-      indexList = indexRepository.findByIndexClassificationAndIndexNameAndFavorite(
-              indexClassification, indexName, favorite, pageable);
+    // 정렬 기준 설정
+    Sort sort = Sort.by(Sort.Order.by(sortField));
+    if (sortDirection != null && sortDirection.equalsIgnoreCase("desc")) {
+      sort = Sort.by(Sort.Order.desc(sortField));
     } else {
-      indexList = indexRepository.findByIdGreaterThanAndIndexClassificationAndIndexNameAndFavorite(
-              cursorIdAfter, indexClassification, indexName, favorite, pageable);
+      sort = Sort.by(Sort.Order.asc(sortField));
     }
 
-    // DTO 변환
-    List<IndexInfoDto> indexDtos = indexList.stream()
-            .map(indexMapper::toDto)
-            .collect(Collectors.toList());
+    // Pageable 생성 (size와 정렬 포함)
+    Pageable customPageable = PageRequest.of(pageable.getPageNumber(), size, sort);
 
-    // 마지막 인덱스 ID 계산 (커서 기반 페이지네이션을 위해 마지막 ID 확인)
-    Long lastIndexId = indexDtos.isEmpty() ? null : indexDtos.get(indexDtos.size() - 1).id();
+    List<Index> indexList = null;
 
-    // 다음 페이지 여부 판단
-    boolean hasNext = indexDtos.size() == pageable.getPageSize();
+    // 커서가 없을 경우 일반 필터 조건만 적용
+    if (cursor == null) {
+      indexList = indexRepository.findByIndexClassificationAndIndexNameAndFavorite(
+              indexClassification, indexName, favorite, customPageable);
+    }
+    // 정렬 기준이 indexClassification일 때
+    else if (sortField.equals("indexClassification")) {
+      if (sort.isSorted() && sort.iterator().next().getDirection().isDescending()) {
+        indexList = indexRepository.findByIndexClassificationCursorDesc(
+                cursor, customPageable);
+      } else {
+        indexList = indexRepository.findByIndexClassificationCursorAsc(
+                cursor, customPageable);
+      }
+    }
+    // 정렬 기준이 indexName일 때
+    else if (sortField.equals("indexName")) {
+      if (sort.isSorted() && sort.iterator().next().getDirection().isDescending()) {
+        indexList = indexRepository.findByIndexNameCursorDesc(
+                cursor, customPageable);
+      } else {
+        indexList = indexRepository.findByIndexNameCursorAsc(
+                cursor, customPageable);
+      }
+    }
 
-    // 페이지네이션 응답 생성
-    return new CursorPageResponseIndexInfoDto<>(
-            indexDtos,
-            hasNext ? String.valueOf(lastIndexId) : null,  // nextCursor
-            lastIndexId,
-            pageable.getPageSize(),
-            indexRepository.count(),
-            hasNext
-    );
+    Page<Index> page = new PageImpl<>(indexList, customPageable, indexList.size());
+
+    // Page<Index>를 Page<IndexInfoDto>로 변환
+    Page<IndexInfoDto> dtoPage = page.map(indexMapper::toDto);
+
+    // Page<IndexInfoDto>를 커서 기반 페이지 응답으로 변환
+    return cursorPageResponseMapper.fromPageIndexInfoDto(dtoPage);
   }
 
 
-  private String encodeCursor(Long id) {
-    return Base64.getEncoder().encodeToString(id.toString().getBytes(StandardCharsets.UTF_8));
-  }
 
-  private Long decodeCursor(String cursor) {
-    byte[] decodedBytes = Base64.getDecoder().decode(cursor);
-    String decodedString = new String(decodedBytes, StandardCharsets.UTF_8);
-    return Long.parseLong(decodedString);
-  }
+
 
   public List<IndexInfoSummaryDto> getIndexSummaries() {
-    return indexRepository.findAllProjectBy();
+    // Index 리스트를 가져온 후, DTO로 변환
+    List<Index> indexList = indexRepository.findAll();
+    return indexList.stream()
+            .map(indexMapper::toSummaryDto)  // Index -> IndexInfoSummaryDto 변환
+            .collect(Collectors.toList());
   }
 
 }
