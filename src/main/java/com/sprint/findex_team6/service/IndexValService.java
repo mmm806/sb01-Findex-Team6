@@ -1,6 +1,5 @@
 package com.sprint.findex_team6.service;
 
-import static com.sprint.findex_team6.error.ErrorCode.INDEX_NOT_FOUND;
 
 import com.opencsv.CSVWriter;
 import com.sprint.findex_team6.dto.IndexDataDto;
@@ -12,7 +11,6 @@ import com.sprint.findex_team6.dto.request.IndexDataCreateRequest;
 import com.sprint.findex_team6.dto.request.IndexDataQueryRequest;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.IndexVal;
-import com.sprint.findex_team6.error.CustomException;
 import com.sprint.findex_team6.repository.IndexRepository;
 import com.sprint.findex_team6.repository.IndexValRepository;
 import jakarta.servlet.http.HttpServletResponse;
@@ -246,7 +244,7 @@ public class IndexValService {
 
     //기준이 되는 지수 조회
     Index targetIndexInfo = indexRepository.findById(indexInfoId)
-        .orElseThrow(() -> new CustomException(INDEX_NOT_FOUND));
+        .orElseThrow(() -> new NotFoundException("해당 지수를 찾을 수 없습니다."));
 
     //동일 분류 지수 가져오기
     List<Index> indexInfoList = indexRepository.findByIndexClassification(targetIndexInfo.getIndexClassification());
@@ -276,6 +274,39 @@ public class IndexValService {
         .limit(limit)
         .collect(Collectors.toList());
   }
+  public List<RankedIndexPerformanceDto> getIndexPerformanceRank(String periodType, int limit) {
+    LocalDate beforeDate = calculateStartDate(periodType);
+    LocalDate today = LocalDate.now();
+
+    //전체 지수 조회
+    List<Index> indexInfoList = indexRepository.findAll();  // 모든 지수 조회
+
+    List<IndexVal> indexDataList = indexValRepository.findByIndexInAndBaseDateIn(indexInfoList, List.of(beforeDate, today));
+
+    //데이터 매핑 -> map으로 정리
+    Map<Long, IndexVal> beforeDataMap = indexDataList.stream()
+        .filter(data -> data.getBaseDate().equals(beforeDate))
+        .collect(Collectors.toMap(data -> data.getIndex().getId(), Function.identity()));
+
+    Map<Long, IndexVal> currentDataMap = indexDataList.stream()
+        .filter(data -> data.getBaseDate().equals(today))
+        .collect(Collectors.toMap(data -> data.getIndex().getId(), Function.identity()));
+
+    //성과 계산
+    List<IndexPerformanceDto> performanceList = indexInfoList.stream()
+        .map(indexInfo -> createIndexPerformanceDto(indexInfo, beforeDataMap, currentDataMap))
+        .flatMap(Optional::stream)
+        .sorted(Comparator.comparing(IndexPerformanceDto::fluctuationRate).reversed())
+        .limit(limit)
+        .toList();
+
+    //순위 부여
+    return IntStream.range(0, performanceList.size())
+        .mapToObj(i -> new RankedIndexPerformanceDto(performanceList.get(i), i + 1))
+        .limit(limit)
+        .collect(Collectors.toList());
+  }
+
 
   //특정 지수 차트 데이터 조회
   public IndexChartDto getIndexChart(String periodType, Long indexId) {
@@ -283,7 +314,7 @@ public class IndexValService {
     LocalDate endDate = LocalDate.now();
 
     Index indexInfo = indexRepository.findById(indexId)
-        .orElseThrow(() -> new CustomException(INDEX_NOT_FOUND));
+        .orElseThrow(() -> new NotFoundException("해당 지수를 찾을 수 없습니다."));
 
     List<IndexVal> indexDataList = indexValRepository
         .findByIndexAndBaseDateBetweenOrderByBaseDateAsc(indexInfo, startDate, endDate);
@@ -304,37 +335,6 @@ public class IndexValService {
         ma5DataPoints,
         ma20DataPoints
     );
-  }
-
-  //지수 차트 전체 조회
-  @Transactional(readOnly = true)
-  public List<IndexChartDto> getIndexCharts(String periodType, List<Long> indexIds) {
-    LocalDate startDate = calculateStartDate(periodType);
-    LocalDate endDate = LocalDate.now();
-
-    List<IndexChartDto> indexCharts = new ArrayList<>();
-    for (Long indexId : indexIds) {
-      Index index = indexRepository.findById(indexId)
-          .orElseThrow(() -> new CustomException(INDEX_NOT_FOUND));
-      List<IndexVal> indexValList = indexValRepository.findByIndexAndBaseDateBetweenOrderByBaseDateAsc(index, startDate, endDate);
-      List<ChartDataPoint> dataPoints = indexValList.stream()
-          .map(data -> new ChartDataPoint(data.getBaseDate(), data.getClosingPrice()))
-          .collect(Collectors.toList());
-
-      List<ChartDataPoint> ma5DataPoints = calculateMovingAverage(dataPoints, 5);
-      List<ChartDataPoint> ma20DataPoints = calculateMovingAverage(dataPoints, 20);
-
-      indexCharts.add(new IndexChartDto(
-          indexId,
-          index.getIndexClassification(),
-          index.getIndexName(),
-          periodType,
-          dataPoints,
-          ma5DataPoints,
-          ma20DataPoints
-      ));
-    }
-    return indexCharts;
   }
 
   private List<ChartDataPoint> calculateMovingAverage(List<ChartDataPoint> dataPoints, int period) {
@@ -402,4 +402,5 @@ public class IndexValService {
       return defaultDate;
     }
   }
+
 }
