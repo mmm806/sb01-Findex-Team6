@@ -1,9 +1,9 @@
 package com.sprint.findex_team6.controller;
 
 import com.sprint.findex_team6.dto.SyncJobDto;
-import com.sprint.findex_team6.dto.request.SyncCursorPageRequest;
+import com.sprint.findex_team6.dto.request.CursorPageRequest;
 import com.sprint.findex_team6.dto.request.IndexDataSyncRequest;
-import com.sprint.findex_team6.dto.response.CursorPageResponseSyncDto;
+import com.sprint.findex_team6.dto.response.CursorPageResponseSyncJobDto;
 import com.sprint.findex_team6.service.SyncDataJobsService;
 import com.sprint.findex_team6.service.SyncInfoJobsService;
 import com.sprint.findex_team6.service.SyncJobsSearchService;
@@ -72,7 +72,7 @@ public class SyncJobsController {
   * @Description: 여러 검색 조건에 따라 연동 정보 또는 데이터 조회
   **/
   @GetMapping
-  public CursorPageResponseSyncDto<SyncJobDto> findSyncJob(@ModelAttribute("request") SyncCursorPageRequest request, Pageable pageable) {
+  public CursorPageResponseSyncJobDto findSyncJob(@ModelAttribute("request") CursorPageRequest request, Pageable pageable) {
 
     return syncJobsSearchService.search(request, pageable);
   }

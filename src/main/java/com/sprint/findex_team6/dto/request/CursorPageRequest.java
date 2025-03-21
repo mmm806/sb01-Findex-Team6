@@ -26,7 +26,7 @@ import lombok.Data;
  * size -> 페이지 크기, default -> 10
 **/
 @Data
-public class SyncCursorPageRequest {
+public class CursorPageRequest {
 
   ContentType jobType;
   Long indexInfoId;
