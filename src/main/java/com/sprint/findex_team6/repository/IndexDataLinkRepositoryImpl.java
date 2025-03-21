@@ -9,6 +9,7 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.BooleanPath;
 import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.sprint.findex_team6.dto.QSyncJobDto;
 import com.sprint.findex_team6.dto.SyncJobDto;
 import com.sprint.findex_team6.dto.request.SyncCursorPageRequest;
 import com.sprint.findex_team6.entity.ContentType;

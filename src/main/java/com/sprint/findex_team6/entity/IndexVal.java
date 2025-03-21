@@ -37,6 +37,7 @@ public class IndexVal {
   private LocalDate baseDate;         // 기준 일자
 
   @Enumerated(EnumType.STRING)
+  @Column(name = "source_type", columnDefinition = "source_type")
   private SourceType sourceType;      // 소스 타입
 
   private BigDecimal marketPrice; // 시가
@@ -49,7 +50,7 @@ public class IndexVal {
   private BigDecimal tradingPrice; // 거래대금
 
 
-  @Column(name = "market_total_amount")
+  @Column(name = "martket_total_amount")
   private BigDecimal marketTotalCount;    // 상장 시가 총액
 
   @ManyToOne //하나의 지수정보에 대해 여러개의 지수 데이터
