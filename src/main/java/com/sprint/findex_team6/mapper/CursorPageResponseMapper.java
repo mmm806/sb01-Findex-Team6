@@ -40,7 +40,7 @@ public class CursorPageResponseMapper {
     );
   }
 
-  public CursorPageResponseIndexInfoDto<IndexInfoDto> fromPageIndexInfoDto(Page<IndexInfoDto> page) {
+  public CursorPageResponse<IndexInfoDto> fromPageIndexInfoDto(Page<IndexInfoDto> page) {
     List<IndexInfoDto> content = page.getContent();
     Sort sort = page.getSort();
     Object nextCursor = null;
@@ -56,7 +56,7 @@ public class CursorPageResponseMapper {
       nextIdAfter = content.get(content.size() - 1).id();
     }
 
-    return new CursorPageResponseIndexInfoDto<>(
+    return new CursorPageResponse<>(
             content,
             nextCursor,
             nextIdAfter,

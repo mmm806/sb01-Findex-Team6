@@ -30,6 +30,6 @@ public class Dashboard {
   private Boolean favorite; // 즐겨찾기 여부
 
   @OneToOne
-  @JoinColumn(name = "index_val_id")
+  @JoinColumn(name = "performance_data_id")
   private IndexVal performanceData; // 성과 분석 정보
 }

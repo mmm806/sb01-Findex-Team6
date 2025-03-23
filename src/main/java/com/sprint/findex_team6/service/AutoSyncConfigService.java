@@ -31,13 +31,14 @@ public class AutoSyncConfigService {
     AutoIntegration autoIntegration = autoIntegrationRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("찾는 자동 연동 설정이 없습니다."));
 
-    autoIntegration.changeEnable(request.enable());
+    autoIntegration.changeEnable(request.enabled());
 
     return AutoSyncConfigDto.builder()
         .id(autoIntegration.getId())
         .indexInfoId(autoIntegration.getIndex().getId())
         .indexClassification(autoIntegration.getIndex().getIndexClassification())
         .indexName(autoIntegration.getIndex().getIndexName())
+        .enabled(request.enabled())
         .build();
   }
 
@@ -88,12 +89,6 @@ public class AutoSyncConfigService {
     );
   }
 
-  /**
-  * @methodName : getNextCursor
-  * @date : 2025-03-20 오후 2:20
-  * @author : wongil
-  * @Description: nextCursor가 null이면 enableBaseNextCursor 이걸로 페이징
-  **/
   private String getNextCursor(String nextCursor, Boolean enableBaseNextCursor) {
     return nextCursor != null ? nextCursor : String.valueOf(enableBaseNextCursor);
   }

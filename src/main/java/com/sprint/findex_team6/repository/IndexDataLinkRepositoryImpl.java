@@ -8,10 +8,11 @@ import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.BooleanPath;
 import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.sprint.findex_team6.dto.QSyncJobDto;
 import com.sprint.findex_team6.dto.SyncJobDto;
-import com.sprint.findex_team6.dto.request.SyncCursorPageRequest;
+import com.sprint.findex_team6.dto.request.CursorPageRequest;
 import com.sprint.findex_team6.entity.ContentType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,7 +25,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
-public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslRepository {
+public class IndexDataLinkRepositoryImpl implements IndexDataLinkRepositoryQuerydsl {
 
   private final JPAQueryFactory queryFactory;
 
@@ -35,9 +36,9 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
    * @Description: querydsl로 구현 CursorPageResponseSyncJobDto
    **/
   @Override
-  public Slice<SyncJobDto> cursorBasePagination(SyncCursorPageRequest request, Pageable slice) {
+  public Slice<SyncJobDto> cursorBasePagination(CursorPageRequest request, Pageable slice) {
 
-    List<SyncJobDto> paged = queryFactory
+    JPAQuery<SyncJobDto> query = queryFactory
         .select(new QSyncJobDto(
             indexDataLink.id,
             indexDataLink.jobType,
@@ -60,8 +61,13 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
             jobTypeEq(request.getJobType()),
             cursor(request)
         )
-        .orderBy(sortFieldAndDirection(request.getSortField(), request.getSortDirection()))
-        .orderBy(indexDataLink.id.desc())
+        .orderBy(sortFieldAndDirection(request.getSortField(), request.getSortDirection()));
+
+    if (request.getSortField() == null || request.getSortField().equals("jobTime")) {
+      query.orderBy(indexDataLink.id.desc());
+    }
+
+    List<SyncJobDto> paged = query
         .limit(getSize(request) + 1) // nextCursor, nextIdAfter 구하기 위해서 1개 더 쿼리
         .fetch();
 
@@ -77,7 +83,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
    * @Description: 카운트 쿼리
    **/
   @Override
-  public Long cursorBasePaginationTotalCount(SyncCursorPageRequest request) {
+  public Long cursorBasePaginationTotalCount(CursorPageRequest request) {
     return queryFactory
         .select(indexDataLink.count())
         .from(indexDataLink)
@@ -104,7 +110,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
    * ?sortField=jobTime&sortDirection=desc&cursor=2025-03-19T04:03:46.008145&idAfter=9934 cursor =
    * 다음 페이지 시작점 idAfter = 이전 페이지의 마지막 요소
    **/
-  private BooleanExpression cursor(SyncCursorPageRequest request) {
+  private BooleanExpression cursor(CursorPageRequest request) {
     if (request.getCursor() == null) {
       return null;
     }
@@ -113,18 +119,20 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
     String sortField = (field == null || field.isBlank()) ? "jobTime" : request.getSortField();
 
     String direction = request.getSortDirection();
-    boolean isDesc =
+    boolean sortDirection =
         direction == null || direction.isBlank() || direction.equalsIgnoreCase("desc");
 
-    LocalDateTime cursor = LocalDateTime.parse(request.getCursor());
-    LocalDate localDateCursor = LocalDateTime.parse(request.getCursor()).toLocalDate();
+    LocalDateTime baseCursor;
+    LocalDate localDateCursor;
     Long idAfter = request.getIdAfter();
 
     // 정렬 필드가 jobTime이고 내림차순 정렬일 때
     if (sortField.equals("jobTime")) {
-      if (isDesc) {
+      baseCursor = LocalDateTime.parse(request.getCursor());
 
-        BooleanExpression lowerThanEqualCursor = getJobTimeDescBaseCondition(cursor, idAfter);
+      if (sortDirection) {
+
+        BooleanExpression lowerThanEqualCursor = getJobTimeDescBaseCondition(baseCursor, idAfter);
 
         if (request.getJobTimeFrom() != null) {
           return lowerThanEqualCursor
@@ -136,7 +144,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
         return lowerThanEqualCursor;
       } else { // 오름차순
 
-        BooleanExpression greaterThanEqualCursor = getJobTimeAscBaseCondition(cursor, idAfter);
+        BooleanExpression greaterThanEqualCursor = getJobTimeAscBaseCondition(baseCursor, idAfter);
 
         if (request.getJobTimeFrom() != null) {
           return greaterThanEqualCursor
@@ -148,68 +156,27 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
         return greaterThanEqualCursor;
       }
     } else { // "대상 날짜" baseTime을 내림차순 쿼리
-      if (isDesc) {
 
-        BooleanExpression lowerThanEqualBaseDateCursor = getDateDescBaseCondition(localDateCursor, idAfter);
+      localDateCursor = LocalDate.parse(request.getCursor());
 
-        if (localDateCursor != null) {
-          return lowerThanEqualBaseDateCursor
-              .or(indexDataLink.targetDate.eq(localDateCursor)
-                  .and(indexDataLink.id.lt(idAfter))
-              );
-        }
+      if (sortDirection) {
+        BooleanExpression lowerThanEqualBaseDateCursor = indexDataLink.targetDate.lt(localDateCursor);
 
-        return lowerThanEqualBaseDateCursor;
+        return lowerThanEqualBaseDateCursor
+            .or(indexDataLink.targetDate.eq(localDateCursor)
+                .and(indexDataLink.id.lt(idAfter))
+            );
+
       } else { // 오름차순 정렬
+        BooleanExpression greaterThanEqualBaseDateCursor = indexDataLink.targetDate.gt(localDateCursor);
 
-        BooleanExpression lowerThanEqualBaseDateCursor = getDateAscBaseCondition(localDateCursor, idAfter);
+        return greaterThanEqualBaseDateCursor
+            .or(indexDataLink.targetDate.eq(localDateCursor)
+                .and(indexDataLink.id.gt(idAfter))
+            );
 
-        if (localDateCursor != null) {
-          return lowerThanEqualBaseDateCursor
-              .or(indexDataLink.targetDate.eq(localDateCursor)
-                  .and(indexDataLink.id.gt(idAfter))
-              );
-        }
-
-        return lowerThanEqualBaseDateCursor;
       }
     }
-
-  }
-
-  /**
-  * @methodName : getDateAscBaseCondition
-  * @date : 2025-03-19 오후 6:53
-  * @author : wongil
-  * @Description: TargetDate 기준 오름차순
-  **/
-  private BooleanExpression getDateAscBaseCondition(LocalDate localDateCursor, Long idAfter) {
-    BooleanExpression lowerThanEqualBaseDateCursor = indexDataLink.targetDate.loe(localDateCursor);
-    BooleanExpression nextId = null;
-
-    if (idAfter != null) {
-      nextId = indexDataLink.id.lt(idAfter);
-    }
-
-    lowerThanEqualBaseDateCursor.and(nextId);
-    return lowerThanEqualBaseDateCursor;
-  }
-
-  /**
-  * @methodName : getDateDescBaseCondition
-  * @date : 2025-03-19 오후 6:51
-  * @author : wongil
-  * @Description: TargetDate를 기준으로 내림차순 정렬
-  **/
-  private BooleanExpression getDateDescBaseCondition(LocalDate localDateCursor, Long idAfter) {
-    BooleanExpression lowerThanEqualBaseDateCursor = indexDataLink.targetDate.loe(localDateCursor);
-    BooleanExpression nextId = null;
-
-    if (idAfter != null) {
-      nextId = indexDataLink.id.lt(idAfter);
-    }
-
-    return lowerThanEqualBaseDateCursor.and(nextId);
   }
 
   /**
@@ -223,7 +190,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
     BooleanExpression nextId = null;
 
     if (idAfter != null) {
-      nextId = indexDataLink.id.gt(idAfter);
+      nextId = indexDataLink.id.lt(idAfter); // TODO: gt에서 수정했음
     }
 
     return greaterThanEqualCursor.and(nextId);
@@ -304,7 +271,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
    * @author : wongil
    * @Description: 한번에 몇개씩 가져올 건지 구함. null이면 기본값으로 10개씩
    **/
-  private int getSize(SyncCursorPageRequest request) {
+  private int getSize(CursorPageRequest request) {
     return request.getSize() != null
         ? request.getSize()
         : 10;
@@ -334,7 +301,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
    * @author : wongil
    * @Description: jobTime보다 작은 시간을 가진거 뽑기
    **/
-  private BooleanExpression jobTimeTo(SyncCursorPageRequest request) {
+  private BooleanExpression jobTimeTo(CursorPageRequest request) {
     return request.getJobTimeTo() != null
         ? indexDataLink.jobTime.loe(request.getJobTimeTo())
         : null;
@@ -346,7 +313,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
    * @author : wongil
    * @Description: jobTime보다 큰 시간
    **/
-  private BooleanExpression jobTimeFrom(SyncCursorPageRequest request) {
+  private BooleanExpression jobTimeFrom(CursorPageRequest request) {
     return request.getJobTimeFrom() != null
         ? indexDataLink.jobTime.goe(request.getJobTimeFrom())
         : null;
@@ -358,7 +325,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
    * @author : wongil
    * @Description: 파라미터로 넘어오면 worker랑 같은 애들 뽑기
    **/
-  private BooleanExpression workerEq(SyncCursorPageRequest request) {
+  private BooleanExpression workerEq(CursorPageRequest request) {
     return request.getWorker() != null
         ? indexDataLink.worker.eq(request.getWorker())
         : null;
@@ -370,7 +337,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
    * @author : wongil
    * @Description: index의 기준 시점을 기준으로 같거나 그 이전 날부터 돌아가며 데이터 뽑기
    **/
-  private BooleanExpression baseDateTo(SyncCursorPageRequest request) {
+  private BooleanExpression baseDateTo(CursorPageRequest request) {
     return request.getBaseDateTo() != null
         ? index.baseDate.loe(request.getBaseDateTo())
         : null;
@@ -382,8 +349,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
    * @author : wongil
    * @Description: index의 기준 시점을 기준으로 같거나 다음날부터 데이터 뽑기
    **/
-  private BooleanExpression baseDateFrom(SyncCursorPageRequest request) {
-    System.out.println("baseDateFrom: " + request.getBaseDateFrom());
+  private BooleanExpression baseDateFrom(CursorPageRequest request) {
     return request.getBaseDateFrom() != null
         ? index.baseDate.goe(request.getBaseDateFrom())
         : null;
@@ -395,7 +361,7 @@ public class IndexDataLinkRepositoryImpl implements IndexDataLinkQuerydslReposit
    * @author : wongil
    * @Description: index의 id와 파라미터로 넘어온 IndexInfoId가 같은지 비교
    **/
-  private BooleanExpression indexInfoIdEq(SyncCursorPageRequest request) {
+  private BooleanExpression indexInfoIdEq(CursorPageRequest request) {
     return request.getIndexInfoId() != null
         ? index.id.eq(request.getIndexInfoId())
         : null;

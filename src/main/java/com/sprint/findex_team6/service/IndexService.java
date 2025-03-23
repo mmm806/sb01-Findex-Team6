@@ -1,14 +1,15 @@
 package com.sprint.findex_team6.service;
 
+import com.sprint.findex_team6.dto.CursorPageResponse;
 import com.sprint.findex_team6.dto.IndexInfoDto;
 import com.sprint.findex_team6.dto.IndexInfoSummaryDto;
-import com.sprint.findex_team6.dto.request.IndexInfoCreateRequest;
-import com.sprint.findex_team6.dto.request.IndexInfoUpdateRequest;
+import com.sprint.findex_team6.dto.request.*;
 import com.sprint.findex_team6.dto.response.CursorPageResponseIndexInfoDto;
 import com.sprint.findex_team6.dto.response.ErrorResponse;
 import com.sprint.findex_team6.entity.Index;
 import com.sprint.findex_team6.entity.SourceType;
 import com.sprint.findex_team6.exception.NotFoundException;
+import com.sprint.findex_team6.mapper.CursorPageResponseMapper;
 import com.sprint.findex_team6.mapper.CursorPageResponseMapper;
 import com.sprint.findex_team6.mapper.IndexMapper;
 import com.sprint.findex_team6.repository.IndexRepository;
@@ -41,6 +42,7 @@ public class IndexService {
   private final IndexRepository indexRepository;
   private final CursorPageResponseMapper cursorPageResponseMapper;
 
+  private final AutoIntegrationService autoIntegrationService;
 
   public ResponseEntity<?> create(IndexInfoCreateRequest indexInfoCreateRequest){
 
@@ -60,6 +62,12 @@ public class IndexService {
     Index index = new Index(indexClassification, indexName, employedItemsCount, baseDate, baseIndex,
         SourceType.USER, favorite);
     indexRepository.save(index);
+    ResponseEntity<?> response= autoIntegrationService.save(index,false);
+    if(response.getStatusCode().isSameCodeAs(HttpStatus.INTERNAL_SERVER_ERROR)){
+      ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(),HttpStatus.BAD_REQUEST.value(),"서버 오류입니다.", "자동 연동에 실패하였습니다.");
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
 
     return ResponseEntity.status(HttpStatus.CREATED).body(indexMapper.toDto(index));
   }
@@ -101,6 +109,7 @@ public class IndexService {
 
   public ResponseEntity<Void> delete(Long id){
     if(indexRepository.findById(id).isPresent()){
+      autoIntegrationService.delete(id);
       indexRepository.deleteById(id);
       return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
@@ -144,72 +153,45 @@ public class IndexService {
   }
 
 
-  public CursorPageResponseIndexInfoDto<IndexInfoDto> getIndexInfos(
-          String indexClassification, String indexName, Boolean favorite,
-          String cursor, Long idAfter,
-          String sortField, String sortDirection,
-          int size, Pageable pageable) {
+  public CursorPageResponse<IndexInfoDto> getIndexInfos(
+          IndexInfoQueryRequest request,
+          PageRequest pageRequest,
+          IndexSortField sortField,
+          SortDirection sortDirection
+  ) {
+    String indexClassification = request.indexClassification();
+    String indexName = request.indexName();
+    Boolean favorite = request.favorite();
+    String cursor = request.cursor();
+    Long idAfter = request.idAfter();
 
-    // 기본값 처리
-    indexClassification = indexClassification == null ? "" : indexClassification;
-    indexName = indexName == null ? "" : indexName;
-    favorite = favorite == null ? false : favorite;
+    Sort sort = pageRequest.getSort();
+    Sort.Order order = sort.iterator().next();
+    boolean isDesc = order.getDirection().isDescending();
 
-    Long cursorIdAfter = null;
-    if (cursor != null) {
-      cursorIdAfter = Long.parseLong(cursor);
-    }
-    if (cursorIdAfter == null && idAfter != null) {
-      cursorIdAfter = idAfter;
-    }
+    Page<Index> page;
 
-    // 정렬 기준 설정
-    Sort sort = Sort.by(Sort.Order.by(sortField));
-    if (sortDirection != null && sortDirection.equalsIgnoreCase("desc")) {
-      sort = Sort.by(Sort.Order.desc(sortField));
-    } else {
-      sort = Sort.by(Sort.Order.asc(sortField));
-    }
-
-    // Pageable 생성 (size와 정렬 포함)
-    Pageable customPageable = PageRequest.of(pageable.getPageNumber(), size, sort);
-
-    List<Index> indexList = null;
-
-    // 커서가 없을 경우 일반 필터 조건만 적용
+    // 커서가 없을 때는 일반 조건 검색
     if (cursor == null) {
-      indexList = indexRepository.findByIndexClassificationAndIndexNameAndFavorite(
-              indexClassification, indexName, favorite, customPageable);
-    }
-    // 정렬 기준이 indexClassification일 때
-    else if (sortField.equals("indexClassification")) {
-      if (sort.isSorted() && sort.iterator().next().getDirection().isDescending()) {
-        indexList = indexRepository.findByIndexClassificationCursorDesc(
-                cursor, customPageable);
+      page = indexRepository.findAllByConditions(indexClassification, indexName, favorite, pageRequest);
+    } else {
+      if (sortField == IndexSortField.indexClassification) {
+        page = isDesc
+                ? indexRepository.findByIndexClassificationCursorDesc(indexClassification, indexName, favorite, cursor, idAfter, pageRequest)
+                : indexRepository.findByIndexClassificationCursorAsc(indexClassification, indexName, favorite, cursor, idAfter, pageRequest);
+      } else if (sortField == IndexSortField.indexName) {
+        page = isDesc
+                ? indexRepository.findByIndexNameCursorDesc(indexClassification, indexName, favorite, cursor, idAfter, pageRequest)
+                : indexRepository.findByIndexNameCursorAsc(indexClassification, indexName, favorite, cursor, idAfter, pageRequest);
       } else {
-        indexList = indexRepository.findByIndexClassificationCursorAsc(
-                cursor, customPageable);
-      }
-    }
-    // 정렬 기준이 indexName일 때
-    else if (sortField.equals("indexName")) {
-      if (sort.isSorted() && sort.iterator().next().getDirection().isDescending()) {
-        indexList = indexRepository.findByIndexNameCursorDesc(
-                cursor, customPageable);
-      } else {
-        indexList = indexRepository.findByIndexNameCursorAsc(
-                cursor, customPageable);
+        throw new IllegalArgumentException("지원하지 않는 정렬 필드입니다.");
       }
     }
 
-    Page<Index> page = new PageImpl<>(indexList, customPageable, indexList.size());
-
-    // Page<Index>를 Page<IndexInfoDto>로 변환
     Page<IndexInfoDto> dtoPage = page.map(indexMapper::toDto);
-
-    // Page<IndexInfoDto>를 커서 기반 페이지 응답으로 변환
     return cursorPageResponseMapper.fromPageIndexInfoDto(dtoPage);
   }
+
 
 
 

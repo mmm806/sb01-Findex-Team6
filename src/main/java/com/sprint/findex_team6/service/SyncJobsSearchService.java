@@ -1,8 +1,8 @@
 package com.sprint.findex_team6.service;
 
 import com.sprint.findex_team6.dto.SyncJobDto;
-import com.sprint.findex_team6.dto.request.SyncCursorPageRequest;
-import com.sprint.findex_team6.dto.response.CursorPageResponseSyncDto;
+import com.sprint.findex_team6.dto.request.CursorPageRequest;
+import com.sprint.findex_team6.dto.response.CursorPageResponseSyncJobDto;
 import com.sprint.findex_team6.repository.IndexDataLinkRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,7 @@ public class SyncJobsSearchService {
 
   private final IndexDataLinkRepository indexDataLinkRepository;
 
-  public CursorPageResponseSyncDto<SyncJobDto> search(SyncCursorPageRequest request, Pageable slice) {
+  public CursorPageResponseSyncJobDto search(CursorPageRequest request, Pageable slice) {
 
     // 페이징해서 데이터 가져오기
     Slice<SyncJobDto> pagedSlice = indexDataLinkRepository.cursorBasePagination(request, slice);
@@ -41,7 +41,7 @@ public class SyncJobsSearchService {
       }
     }
 
-    return new CursorPageResponseSyncDto<>(
+    return new CursorPageResponseSyncJobDto(
         content,
         nextCursor,
         nextIdAfter,
@@ -51,7 +51,7 @@ public class SyncJobsSearchService {
         );
   }
 
-  private int getSize(SyncCursorPageRequest request) {
+  private int getSize(CursorPageRequest request) {
     return request.getSize() == null ? 10 : request.getSize();
   }
 

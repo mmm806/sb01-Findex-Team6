@@ -32,7 +32,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class BatchAutoSyncIndexData {
 
   private final AutoIntegrationRepository autoIntegrationRepository;
-  private final IndexDataLinkRepository indexDataLinkRepository;
   private final IndexValRepository indexValRepository;
 
   private final RestTemplate restTemplate;
@@ -73,11 +72,11 @@ public class BatchAutoSyncIndexData {
   }
 
   /**
-  * @methodName : sync
-  * @date : 2025-03-20 오후 4:26
-  * @author : wongil
-  * @Description: 실제 갱신 작업
-  **/
+   * @methodName : sync
+   * @date : 2025-03-20 오후 4:26
+   * @author : wongil
+   * @Description: 실제 갱신 작업
+   **/
   private void sync(Index index) {
     List<IndexVal> indexVals = indexValRepository.findByIndex_Id(index.getId());
 

@@ -13,7 +13,6 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import javax.net.ssl.SSLSession;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,7 +28,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Table(name = "index_val", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"date", "index_id"})
+    @UniqueConstraint(columnNames = {"base_date", "index_id"})
 })
 public class IndexVal {
 
@@ -37,8 +36,7 @@ public class IndexVal {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-
-  @Column(name = "date")
+  @Column(name = "base_date")
   private LocalDate baseDate;         // 기준 일자
 
   @Enumerated(EnumType.STRING)
@@ -46,33 +44,15 @@ public class IndexVal {
   @JdbcTypeCode(SqlTypes.NAMED_ENUM)
   private SourceType sourceType;      // 소스 타입
 
-  @Column(name = "market_price")
   private BigDecimal marketPrice; // 시가
-
-  @Column(name = "close_price")
   private BigDecimal closingPrice; // 종가
-
-  @Column(name = "high_price")
   private BigDecimal highPrice; // 고가
-
-  @Column(name = "low_price")
   private BigDecimal lowPrice;  // 저가
-
-  @Column(name = "versus")
   private BigDecimal versus;       // 대비
-
-  @Column(name = "fluctuation_rate")
   private BigDecimal fluctuationRate; // 등락률
-
-  @Column(name = "trading_quantity")
   private Long tradingQuantity;             // 거래량
-
-  @Column(name = "trading_price")
   private BigDecimal tradingPrice; // 거래대금
-
-
-  @Column(name = "market_total_count")
-  private BigDecimal marketTotalCount;    // 상장 시가 총액
+  private BigDecimal marketTotalAmount;    // 상장 시가 총액
 
   @ManyToOne //하나의 지수정보에 대해 여러개의 지수 데이터
   @JoinColumn(name = "index_id")
@@ -90,7 +70,7 @@ public class IndexVal {
       BigDecimal fluctuationRate,
       Long tradingQuantity,
       BigDecimal tradingPrice,
-      BigDecimal marketTotalCount,
+      BigDecimal marketTotalAmount,
       Index index
   ) {
     this.baseDate = baseDate;
@@ -103,7 +83,7 @@ public class IndexVal {
     this.fluctuationRate = fluctuationRate;
     this.tradingQuantity = tradingQuantity;
     this.tradingPrice = tradingPrice;
-    this.marketTotalCount = marketTotalCount;
+    this.marketTotalAmount = marketTotalAmount;
     this.index = index;
   }
 
@@ -126,7 +106,7 @@ public class IndexVal {
     this.fluctuationRate = BigDecimal.valueOf(fltRt);
     this.tradingQuantity = trqu;
     this.tradingPrice = BigDecimal.valueOf(trPrc);
-    this.marketTotalCount = BigDecimal.valueOf(lstgMrktTotAmt);
+    this.marketTotalAmount = BigDecimal.valueOf(lstgMrktTotAmt);
 
 
     return this;
